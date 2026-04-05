@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestPace-Track - 测试进度跟踪</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>TestPace-Track</h1>
+            <div class="version-selector">
+                <select id="version-select">
+                    <option value="">选择版本</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <section class="timeline" id="timeline">
+        <div class="timeline-header">
+            <h2>版本计划时间轴</h2>
+            <button class="btn-add" id="add-plan-btn">+ 添加阶段</button>
+        </div>
+        <div class="timeline-content" id="timeline-content">
+            <!-- Beta_T1 timeline goes here -->
+        </div>
+    </section>
+
+    <section class="stats-dashboard" id="stats">
+        <div class="stat-card">
+            <h3>实际需求</h3>
+            <span class="stat-value" id="stat-actual-count">-</span>
+        </div>
+        <div class="stat-card">
+            <h3>全部需求</h3>
+            <span class="stat-value" id="stat-total-count">-</span>
+        </div>
+        <div class="stat-card">
+            <h3>已完成</h3>
+            <span class="stat-value stat-success" id="stat-completed">-</span>
+        </div>
+        <div class="stat-card">
+            <h3>进行中</h3>
+            <span class="stat-value stat-warning" id="stat-in-progress">-</span>
+        </div>
+        <div class="stat-card">
+            <h3>未开始</h3>
+            <span class="stat-value stat-danger" id="stat-not-started">-</span>
+        </div>
+    </section>
+
+    <section class="risk-cards" id="risk-cards">
+        <div class="card" data-type="not-started" id="card-not-started">
+            <h3>未开始</h3>
+            <span class="count">0</span>个需求
+        </div>
+        <div class="card" data-type="delayed" id="card-delayed">
+            <h3>进度滞后</h3>
+            <span class="count">0</span>个需求
+        </div>
+        <div class="card" data-type="empty-fields" id="card-empty">
+            <h3>空白字段</h3>
+            <span class="count">0</span>个需求
+        </div>
+    </section>
+
+    <section class="filter-bar">
+        <select id="tester-filter">
+            <option value="">全部测试人员</option>
+        </select>
+        <input type="text" id="search-box" placeholder="搜索需求...">
+        <button class="btn-refresh" id="refresh-btn">刷新数据</button>
+    </section>
+
+    <section class="requirements-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>需求编号</th>
+                    <th>特性分类</th>
+                    <th>测试人员</th>
+                    <th>进度</th>
+                    <th>风险</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="requirements-body">
+            </tbody>
+        </table>
+    </section>
+
+    <div class="modal" id="plan-modal">
+        <div class="modal-content">
+            <h3>添加版本计划</h3>
+            <form id="plan-form">
+                <input type="hidden" id="plan-version-id">
+                <div class="form-group">
+                    <label>阶段名称</label>
+                    <select id="plan-stage-name">
+                        <option value="需求串讲/设计完成">需求串讲/设计完成</option>
+                        <option value="需求反串讲完成">需求反串讲完成</option>
+                        <option value="需求测试阶段">需求测试阶段</option>
+                        <option value="需求测试完成">需求测试完成</option>
+                        <option value="需求问题单验收完成">需求问题单验收完成</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>目标日期</label>
+                    <input type="date" id="plan-target-date" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">保存</button>
+                    <button type="button" class="btn-secondary" id="cancel-plan-btn">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
