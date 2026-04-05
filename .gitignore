@@ -1,0 +1,6 @@
+# config/documents.json (contains sensitive bucket/doc IDs)
+config/documents.json
+data/cache/*.xlsx
+data/*.db
+__pycache__/
+*.pyc
