@@ -1,68 +1,35 @@
 # TestPace-Track 待确认内容 SOP
 
-## 一、数据获取配置
+## 一、数据获取方案（简化版）
 
-### 1.1 下载API的URL
+### 1.1 方案选择
+
+**选择：直接 API 下载**
+- 不使用 Playwright 浏览器自动化
+- 直接调用 OneBox API 获取下载链接
+- 下载 Excel 后本地缓存分析
+
+### 1.2 下载API的URL
 
 **接口信息：**
-- URL: `https://onebox.huawei.com/perfect/share/getDocOnlineDownloadUrl/{云空间编号}/{表格编号}`
+- URL: `https://onebox.huawei.com/perfect/share/getDocOnlineDownloadUrl{bucket_path}/{doc_id}`
 - 请求方式: GET
-- URL模板: `https://onebox.huawei.com/perfect/share/getDocOnlineDownloadUrl/{bucket_id}/{doc_id}`
 - 返回: `{"data": "下载链接", "code": 200}`
 
 **示例：**
+- Bucket路径: `/7223826/479248`
+- Doc ID: `31b5087ed7a95f70afe4b5bfbbe215c2`
 - 完整URL: `https://onebox.huawei.com/perfect/share/getDocOnlineDownloadUrl/7223826/479248/31b5087ed7a95f70afe4b5bfbbe215c2`
-- 响应中的下载链接: `https://clouddrive-sia.huawei.com/minio/wps-file-bucket/0eb8f92387f840c19e3a849db7246ae7?...`
 
-**可配置参数：**
-- 云空间编号（bucket_id）: 如 7223826
-- 表格编号（doc_id）: 如 31b5087ed7a95f70afe4b5bfbbe215c2
-
-**需要确认：**
-- 是否需要请求头（如 Cookie、Token 等）？
-- 配置文件示例：
+**配置文件：**
 ```json
 {
   "documents": [
     {
+      "version_id": "0330",
       "name": "0330需求列表",
-      "bucket_id": "7223826",
+      "bucket_path": "/7223826/479248",
       "doc_id": "31b5087ed7a95f70afe4b5bfbbe215c2"
-    }
-  ]
-}
-```
-
----
-
-### 1.2 登录方式
-
-- 采用浏览器自动化（Playwright手动交互）
-- 登录状态有效期：未知，需定时重新登录
-- 重新登录触发条件：Cookie过期或手动刷新
-
----
-
-### 1.3 Sheet识别规则
-
-**识别方式：手动选择**
-
-- 扫描所有Sheet页，展示给用户选择
-- 默认选项：名称包含"需求列表"的Sheet（如"0330需求列表"）
-
-**多文档配置示例：**
-```json
-{
-  "documents": [
-    {
-      "name": "0330需求列表",
-      "bucket_id": "7223826",
-      "doc_id": "31b5087ed7a95f70afe4b5bfbbe215c2"
-    },
-    {
-      "name": "0630需求列表",
-      "bucket_id": "7223826",
-      "doc_id": "另一个doc_id"
     }
   ]
 }
@@ -109,10 +76,6 @@
 https://clouddevops.huawei.com/workitem/+{需求编号}
 ```
 
-**示例：**
-- 需求编号: FE2025123456789
-- 链接: https://clouddevops.huawei.com/workitem/FE2025123456789
-
 ---
 
 ## 五、必填检查字段
@@ -121,24 +84,11 @@ https://clouddevops.huawei.com/workitem/+{需求编号}
 
 | 序号 | 字段名 | 说明 |
 |------|--------|------|
-| 1 | 业务团队 | |
-| 2 | 需求编号 | |
-| 3 | 需求描述 | |
-| 4 | 开发人员 | |
-| 5 | 测试人员 | 关键过滤列 |
-| 6 | 串讲和测试设计进度 | |
-| 7 | 反串讲进度（%） | |
-| 8 | 用例数 | |
-| 9 | 计划转测时间 | |
-| 10 | 测试进度 | |
-| 11 | 自验质量 | |
-| 12 | 问题单数量 | 只记录不提关闭 |
-| 13 | 是否变更接口 | |
-| 14 | 是否涉及资料 | |
-| 15 | 资料转测时间 | |
-| 16 | 是否涉及性能、过载 | |
-| 17 | 是否涉及可靠性 | |
-| 18 | 涉及数据底座 | |
+| 1 | 测试人员 | 关键过滤列 |
+| 2 | 计划转测时间 | |
+| 3 | 测试进度 | |
+| 4 | 需求编号 | |
+| 5 | 需求描述 | |
 
 **注意：不写死在代码中，通过读取Excel表头动态识别**
 
@@ -146,10 +96,10 @@ https://clouddevops.huawei.com/workitem/+{需求编号}
 
 ## 六、数据缓存策略
 
-**缓存模式：混合模式（本地缓存 + 手动刷新）**
+**缓存模式：永久本地缓存 + 手动刷新**
 
 - 缓存存储位置: `data/cache/`
-- 缓存过期时间: 一周（7天）
+- 缓存过期时间: 永久
 - 点击刷新: 直接覆盖之前的缓存
 - 文件命名规则: `{文档名称}_{日期}.xlsx`
 
@@ -179,16 +129,6 @@ data/cache/
 - 阶段时间可配置
 - 用于动态判断风险
 
-**Beta_T1 阶段示例：**
-```
-Beta_T1
-├── 需求串讲/设计完成: 2024/03/15
-├── 需求反串讲完成: 2024/03/20
-├── 需求测试完成: 2024/04/01
-├── 需求测试完成: 2024/04/10
-└── 需求问题单验收完成: 2024/04/15
-```
-
 ---
 
 ### 7.1 统计仪表盘
@@ -214,8 +154,9 @@ Beta_T1
 
 ### 7.3 完整需求列表
 
-- 支持按测试人员过滤
-- 每条需求有详情链接（https://clouddevops.huawei.com/workitem/+需求编号）
+- Sheet选择下拉
+- 按测试人员过滤
+- 每条需求有详情链接
 - 展示需求进度和风险标记
 
 ---

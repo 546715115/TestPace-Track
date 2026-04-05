@@ -9,22 +9,9 @@ def get_db():
     return conn
 
 def init_db():
+    """Initialize database with required tables."""
     conn = get_db()
     cursor = conn.cursor()
-
-    # Document config table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS document_config (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            version_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            bucket_id TEXT NOT NULL,
-            doc_id TEXT NOT NULL,
-            cache_path TEXT,
-            last_sync TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
 
     # Version plan table
     cursor.execute('''
@@ -39,16 +26,9 @@ def init_db():
         )
     ''')
 
-    # Check field config table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS check_field_config (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            version_id TEXT NOT NULL,
-            field_name TEXT NOT NULL,
-            is_required INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
     conn.commit()
     conn.close()
+
+if __name__ == '__main__':
+    init_db()
+    print(f"Database initialized at: {DB_PATH}")
