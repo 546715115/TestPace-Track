@@ -33,3 +33,40 @@ class ExcelReader:
     def get_merged_ranges(self) -> list:
         ws = self.workbook[self.current_sheet]
         return list(ws.merged_cells.ranges)
+
+    def get_requirement_groups(self) -> list:
+        """Detect requirement groups based on merged cells in column A (特性分类)"""
+        ws = self.workbook[self.current_sheet]
+        groups = []
+        merged_ranges = list(ws.merged_cells.ranges)
+
+        # Find merged ranges in column A (特性分类)
+        col_a_merges = []
+        for mr in merged_ranges:
+            if mr.min_col == 1 and mr.max_col == 1:
+                col_a_merges.append({
+                    'min_row': mr.min_row,
+                    'max_row': mr.max_row
+                })
+
+        # Add merged groups
+        for mr in sorted(col_a_merges, key=lambda x: x['min_row']):
+            groups.append({
+                'rows': list(range(mr['min_row'], mr['max_row'] + 1)),
+                'is_merged': True
+            })
+
+        # Add non-merged rows
+        merged_rows = set()
+        for mr in col_a_merges:
+            for r in range(mr['min_row'], mr['max_row'] + 1):
+                merged_rows.add(r)
+
+        for row_idx in range(2, ws.max_row + 1):
+            if row_idx not in merged_rows:
+                groups.append({
+                    'rows': [row_idx],
+                    'is_merged': False
+                })
+
+        return groups
