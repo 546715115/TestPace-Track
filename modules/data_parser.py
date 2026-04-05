@@ -1,4 +1,6 @@
 import openpyxl
+import re
+from datetime import datetime
 from typing import List, Dict, Any
 
 # Yes-no type fields that should use 'any yes = yes' logic
@@ -26,6 +28,53 @@ def merge_value_field(values: list):
         if v is not None and str(v).strip():
             return v
     return ''
+
+def parse_date(value) -> str:
+    """Parse various date formats to YYYY/MM/DD"""
+    if value is None or str(value).strip() == '':
+        return ''
+
+    val = str(value).strip()
+
+    # Already in target format
+    if re.match(r'\d{4}/\d{1,2}/\d{1,2}', val):
+        parts = val.split('/')
+        return f"{int(parts[0]):04d}/{int(parts[1]):02d}/{int(parts[2]):02d}"
+
+    # Dot separator
+    if re.match(r'\d{4}\.\d{1,2}\.\d{1,2}', val):
+        parts = val.split('.')
+        return f"{int(parts[0]):04d}/{int(parts[1]):02d}/{int(parts[2]):02d}"
+
+    # Short formats (assume current year)
+    if re.match(r'\d{1,2}/\d{1,2}', val):
+        parts = val.split('/')
+        year = datetime.now().year
+        return f"{year}/{int(parts[0]):02d}/{int(parts[1]):02d}"
+    if re.match(r'\d{1,2}\.\d{1,2}', val):
+        parts = val.split('.')
+        year = datetime.now().year
+        return f"{year}/{int(parts[0]):02d}/{int(parts[1]):02d}"
+
+    return str(value)
+
+def normalize_progress(value) -> int:
+    """Normalize progress to integer percentage"""
+    if value is None or str(value).strip() == '':
+        return 0
+
+    val = str(value).strip()
+
+    if val == '已完成':
+        return 100
+
+    # Remove % if present
+    val = val.replace('%', '')
+
+    try:
+        return int(float(val))
+    except:
+        return 0
 
 class ExcelReader:
     def __init__(self, file_path: str):
@@ -117,6 +166,10 @@ class ExcelReader:
                 result[header] = merge_yes_no_field(values)
             elif header in PERSONNEL_FIELDS:
                 result[header] = merge_personnel_field(values)
+            elif '进度' in str(header) or '进度（%）' in str(header):
+                result[header] = normalize_progress(merge_value_field(values))
+            elif '时间' in str(header) or '日期' in str(header):
+                result[header] = parse_date(merge_value_field(values))
             else:
                 result[header] = merge_value_field(values)
 
