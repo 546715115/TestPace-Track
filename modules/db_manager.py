@@ -1,7 +1,12 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'pace_track.db')
+DB_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+DB_PATH = os.path.join(DB_DIR, 'pace_track.db')
+
+# 确保data目录存在
+if not os.path.exists(DB_DIR):
+    os.makedirs(DB_DIR)
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
