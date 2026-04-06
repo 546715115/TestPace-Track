@@ -69,14 +69,14 @@ class DataFetcher:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*',
                 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                'Referer': f'https://onebox.huawei.com/perfect/share/doc/{doc_id}',
-                'Origin': 'https://onebox.huawei.com'
+                'Referer': f'https://onebox.huawei.com/perfect/share/doc/{bucket_path}/{doc_id}',
+                'Origin': 'https://onebox.huawei.com',
+                'X-Requested-With': 'XMLHttpRequest'
             }
             if self.cookie:
                 headers['Cookie'] = self.cookie
             if self.csrf_token:
                 headers['X-CSRF-Token'] = self.csrf_token
-                headers['x-csrf-token'] = self.csrf_token
 
             response = self.session.get(url, headers=headers, timeout=30)
 
