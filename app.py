@@ -218,14 +218,17 @@ def load_sheet():
     # 对每个组内的风险去重合并，并同步最小进度
     for idx, merged_req in enumerate(merged_reqs):
         group_rows = [r for r in raw_rows if r['_group_idx'] == idx]
-        # 合并所有风险并去重
+        # 合并所有风险并去重，过滤掉None值
         all_risks = set()
         for r in group_rows:
-            all_risks.update(r.get('risks', []))
+            risks = r.get('risks', []) or []
+            for risk in risks:
+                if risk is not None:
+                    all_risks.add(risk)
         # 同步去重后的风险和最小进度到所有行
         min_progress = merged_req.get('测试进度', 0)
         for r in group_rows:
-            r['risks'] = sorted(list(all_risks))
+            r['risks'] = sorted([x for x in all_risks if x is not None])
             r['测试进度'] = min_progress
 
     # 计算统计
