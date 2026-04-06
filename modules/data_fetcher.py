@@ -26,42 +26,26 @@ class DataFetcher:
 
     def __init__(self):
         self.cookie = get_cookie_config().get('cookie', '')
-        self.csrf_token = None
+        self.csrf_token = self._extract_csrf_token()
         self.session = requests.Session()
 
-    def get_csrf_token(self) -> Optional[str]:
-        """从 OneBox 首页获取 CSRF token"""
-        try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
-            }
-            if self.cookie:
-                headers['Cookie'] = self.cookie
+    def _extract_csrf_token(self) -> Optional[str]:
+        """从 Cookie 中提取 CSRF token"""
+        if not self.cookie:
+            return None
 
-            response = self.session.get(self.HOME_URL, headers=headers, timeout=30)
+        # 尝试匹配 wapcsrftoken
+        match = re.search(r'wapcsrftoken=([^;]+)', self.cookie)
+        if match:
+            return match.group(1)
 
-            # 从页面中提取 CSRF token
-            # 可能在 meta 标签或 JavaScript 中
-            match = re.search(r'csrf["\']?\s*[:=]\s*["\']([^"\']+)["\']', response.text)
+        # 尝试其他可能的 CSRF token 字段名
+        for pattern in [r'csrf_token=([^;]+)', r'csrf=([^;]+)', r'csrftoken=([^;]+)']:
+            match = re.search(pattern, self.cookie, re.IGNORECASE)
             if match:
                 return match.group(1)
 
-            # 也可能在 Cookie 中
-            match = re.search(r'csrf_token=([^;]+)', self.cookie)
-            if match:
-                return match.group(1)
-
-            # 或者从响应 Cookie 中获取
-            for cookie in self.session.cookies:
-                if 'csrf' in cookie.name.lower():
-                    return cookie.value
-
-            return None
-        except Exception as e:
-            print(f"Error getting CSRF token: {e}")
-            return None
+        return None
 
     def construct_download_url(self, bucket_path: str, doc_id: str) -> str:
         """
@@ -75,15 +59,11 @@ class DataFetcher:
         """调用 API 获取实际下载链接"""
         url = self.construct_download_url(bucket_path, doc_id)
 
-        # 先获取 CSRF token
-        if not self.csrf_token:
-            self.csrf_token = self.get_csrf_token()
-            print(f"CSRF Token: {self.csrf_token[:50] + '...' if self.csrf_token else 'Not found'}")
-
         try:
             print(f"\n=== Download Request ===")
             print(f"URL: {url}")
             print(f"Cookie length: {len(self.cookie) if self.cookie else 0} chars")
+            print(f"CSRF Token: {self.csrf_token[:30] + '...' if self.csrf_token else 'Not found'}")
 
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
