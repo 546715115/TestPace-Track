@@ -237,14 +237,30 @@ def load_sheet():
     reader = ExcelReader(cache_file)
     reader.load_sheet(sheet_name)
 
-    groups = reader.get_requirement_groups()
-    merged_reqs = [reader.merge_group(g) for g in groups]
+    # 获取原始所有行（用于前端rowspan合并显示）
+    raw_rows, groups = reader.get_raw_rows()
 
-    # 计算风险
+    # 计算风险：先对每个原始行分别分析，再去重合并
+    merged_reqs = [reader.merge_group(g) for g in groups]
     version_plans = VersionManager().get_version_plans(version_id)
     analyzer = RiskAnalyzer(version_plans)
-    for req in merged_reqs:
-        req['risks'] = analyzer.analyze_requirement(req)
+
+    # 对每个原始行单独分析风险
+    for raw_row in raw_rows:
+        raw_row['risks'] = analyzer.analyze_requirement(raw_row)
+
+    # 对每个组内的风险去重合并，并同步最小进度
+    for idx, merged_req in enumerate(merged_reqs):
+        group_rows = [r for r in raw_rows if r['_group_idx'] == idx]
+        # 合并所有风险并去重
+        all_risks = set()
+        for r in group_rows:
+            all_risks.update(r.get('risks', []))
+        # 同步去重后的风险和最小进度到所有行
+        min_progress = merged_req.get('测试进度', 0)
+        for r in group_rows:
+            r['risks'] = sorted(list(all_risks))
+            r['测试进度'] = min_progress
 
     # 计算统计
     stats_calc = StatsCalculator(merged_reqs)
@@ -253,8 +269,8 @@ def load_sheet():
     return jsonify({
         'success': True,
         'data': {
-            'requirements': merged_reqs,
-            'groups': groups,
+            'requirements': raw_rows,  # 原始所有行
+            'groups': groups,          # 合并组信息
             'stats': stats
         }
     })

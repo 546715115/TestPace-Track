@@ -57,17 +57,39 @@ def normalize_progress(value) -> int:
     val = val.replace('%', '')
 
     try:
-        return int(float(val))
+        num = float(val)
+        # 如果原值是小数（如0.8表示80%），乘以100转为整数
+        if num < 1 and num > 0:
+            return int(num * 100)
+        # 如果是整数（如80表示80%），直接返回
+        if num == int(num):
+            return int(num)
+        else:
+            return int(num)
     except:
         return 0
 
 
 def merge_yes_no_field(values: list) -> str:
-    """合并是否类字段：任意'是'则为'是'"""
+    """合并是否类字段：任意'是'则为'是'，有'否'则返回'否'，全空返回空"""
+    has_yes = False
+    has_no = False
+    has_value = False
     for v in values:
+        if v is None or str(v).strip() == '':
+            continue
+        has_value = True
         if v == '是':
-            return '是'
-    return '否'
+            has_yes = True
+        elif v == '否':
+            has_no = True
+    if has_yes:
+        return '是'
+    if has_no:
+        return '否'
+    if has_value:
+        return '否'  # 有值但不是是/否，返回否
+    return ''  # 全空
 
 
 def merge_personnel_field(values: list) -> str:
@@ -83,6 +105,15 @@ def merge_value_field(values: list):
         if v is not None and str(v).strip():
             return v
     return ''
+
+
+def merge_progress_field(values: list):
+    """合并进度类字段：取最小值"""
+    progress_values = []
+    for v in values:
+        if v is not None and str(v).strip():
+            progress_values.append(normalize_progress(v))
+    return min(progress_values) if progress_values else 0
 
 
 class ExcelReader:
@@ -175,7 +206,7 @@ class ExcelReader:
             elif header in PERSONNEL_FIELDS:
                 result[header] = merge_personnel_field(values)
             elif any(kw in str(header) for kw in ['进度', '进度（%）']):
-                result[header] = normalize_progress(merge_value_field(values))
+                result[header] = merge_progress_field(values)
             elif any(kw in str(header) for kw in ['时间', '日期']):
                 result[header] = parse_date(merge_value_field(values))
             else:
@@ -194,6 +225,66 @@ class ExcelReader:
         groups = self.get_requirement_groups()
         merged = [self.merge_group(g) for g in groups]
         return merged, groups
+
+    def get_raw_rows(self) -> Tuple[List[Dict], List[Dict]]:
+        """
+        获取原始所有行数据和分组信息（用于前端rowspan合并）
+        返回: (raw_rows, groups)
+        - raw_rows: 每行原始数据，合并单元格的值会复制到同组所有行
+        - groups: 合并组信息，用于计算rowspan
+        """
+        ws = self.workbook[self.current_sheet]
+        headers = self.get_headers(self.current_sheet)
+        groups = self.get_requirement_groups()
+
+        # 构建 group -> 第一行数据的映射（用于复制合并单元格的值）
+        group_first_row_data = {}
+        for idx, group in enumerate(groups):
+            if group['rows']:
+                first_row_idx = group['rows'][0]
+                first_row_data = {}
+                for col_idx, header in enumerate(headers, start=1):
+                    cell = ws.cell(row=first_row_idx, column=col_idx)
+                    first_row_data[header] = cell.value
+                group_first_row_data[idx] = first_row_data
+
+        # 构建 group -> row_indices 的映射
+        group_of_row = {}
+        for idx, group in enumerate(groups):
+            for row_idx in group['rows']:
+                group_of_row[row_idx] = idx
+
+        # 获取所有原始行数据
+        raw_rows = []
+        for row_idx in range(2, ws.max_row + 1):
+            row_data = {}
+            for col_idx, header in enumerate(headers, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                row_data[header] = cell.value
+
+            # 添加元数据：属于哪个组、是否是合并组的第一行
+            group_idx = group_of_row.get(row_idx)
+            if group_idx is not None:
+                group = groups[group_idx]
+                row_data['_group_idx'] = group_idx
+                row_data['_is_first_in_group'] = (row_idx == group['rows'][0])
+                row_data['_is_merged'] = group['is_merged']
+                row_data['_row_span'] = len(group['rows']) if group['is_merged'] else 1
+
+                # 如果是合并组且不是第一行，复制第一行的值（用于合并显示）
+                if not row_data['_is_first_in_group'] and group_first_row_data.get(group_idx):
+                    for header in headers:
+                        if row_data.get(header) is None and group_first_row_data[group_idx].get(header) is not None:
+                            row_data[header] = group_first_row_data[group_idx][header]
+            else:
+                row_data['_group_idx'] = -1
+                row_data['_is_first_in_group'] = True
+                row_data['_is_merged'] = False
+                row_data['_row_span'] = 1
+
+            raw_rows.append(row_data)
+
+        return raw_rows, groups
 
 
 if __name__ == '__main__':

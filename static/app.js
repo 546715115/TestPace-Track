@@ -471,7 +471,9 @@ function renderTable(requirements) {
         return;
     }
 
-    tbody.innerHTML = requirements.map(req => {
+    let html = '';
+
+    for (const req of requirements) {
         const riskTags = (req.risks || []).map(risk =>
             `<span class="risk-tag ${risk}">${getRiskLabel(risk)}</span>`
         ).join('');
@@ -483,19 +485,45 @@ function renderTable(requirements) {
         const progress = req['测试进度'] || 0;
         const progressClass = progress >= 100 ? 'progress-complete' : progress > 0 ? 'progress-active' : 'progress-zero';
 
-        return `
-            <tr>
-                <td>${req['特性分类'] || ''}</td>
-                <td>${req['业务团队'] || ''}</td>
-                <td>${req['需求编号'] || ''}</td>
-                <td class="desc-cell" title="${req['需求描述'] || ''}">${req['需求描述'] || ''}</td>
-                <td>${req['测试人员'] || ''}</td>
-                <td class="${progressClass}">${progress}%</td>
-                <td>${riskTags}</td>
-                <td>${detailLink}</td>
-            </tr>
-        `;
-    }).join('');
+        // HTML转义函数
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        };
+
+        // 非第一行：只输出per-row列，不需要为空单元格占位
+        if (!req._is_first_in_group) {
+            html += `<tr><td>${escapeHtml(req['业务团队'])}</td><td>${escapeHtml(req['需求编号'])}</td><td class="desc-cell" title="${escapeHtml(req['需求描述'])}">${escapeHtml(req['需求描述'])}</td><td>${detailLink}</td></tr>`;
+            continue;
+        }
+
+        // 第一行：带rowspan的合并列
+        html += '<tr>';
+        const rowSpanAttr = req._row_span > 1 ? ` rowspan="${req._row_span}"` : '';
+
+        // 特性分类列
+        html += `<td${rowSpanAttr} class="merged-cell">${req['特性分类'] || ''}</td>`;
+
+        // per-row列
+        html += `<td>${escapeHtml(req['业务团队'])}</td>`;
+        html += `<td>${escapeHtml(req['需求编号'])}</td>`;
+        html += `<td class="desc-cell" title="${escapeHtml(req['需求描述'])}">${escapeHtml(req['需求描述'])}</td>`;
+
+        // 测试人员列
+        html += `<td${rowSpanAttr} class="merged-cell">${req['测试人员'] || ''}</td>`;
+
+        // 测试进度列
+        html += `<td${rowSpanAttr} class="${progressClass}">${progress}%</td>`;
+
+        // 风险列
+        html += `<td${rowSpanAttr}>${riskTags}</td>`;
+
+        // 详情列：per-row，不合并
+        html += `<td>${detailLink}</td>`;
+        html += '</tr>';
+    }
+
+    tbody.innerHTML = html;
 }
 
 function getRiskLabel(risk) {
