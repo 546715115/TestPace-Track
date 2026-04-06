@@ -273,6 +273,7 @@ main {
 .risk-cards .card[data-type="not-started"] .count { color: var(--color-warning); }
 .risk-cards .card[data-type="delayed"] .count { color: var(--color-danger); }
 .risk-cards .card[data-type="empty-fields"] .count { color: var(--color-secondary); }
+.risk-cards .card[data-type="empty-fields"] { background: #ffe0e0; }
 
 .delayed-split {
     display: flex;
@@ -463,6 +464,13 @@ main {
 .modal-wide {
     max-width: 1400px;
     width: 95%;
+}
+
+#risk-detail-modal .modal-content {
+    max-width: 900px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
 }
 
 .modal-content h3 {
@@ -708,6 +716,92 @@ main {
     color: var(--color-danger);
 }
 
+/* Risk Detail Modal */
+.risk-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.risk-detail-header h3 {
+    margin: 0;
+}
+
+.risk-detail-header .btn-secondary {
+    padding: 6px 16px;
+}
+
+.risk-detail-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.risk-detail-summary-item {
+    padding: 8px 16px;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.risk-detail-summary-item .tester-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.risk-detail-summary-item .count {
+    color: var(--color-danger);
+    margin-left: 4px;
+}
+
+.risk-detail-filter {
+    margin-bottom: 12px;
+}
+
+.risk-detail-filter select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.risk-detail-table-wrapper {
+    max-height: 500px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.risk-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border: 1px solid #000;
+}
+
+.risk-detail-table th,
+.risk-detail-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border: 1px solid #000;
+}
+
+.risk-detail-table th {
+    background: var(--bg-main);
+    font-weight: 600;
+    color: var(--color-primary);
+    position: sticky;
+    top: 0;
+}
+
+.risk-detail-table tbody tr:hover {
+    background: #fafafa;
+}
+
 /* Utilities */
 .no-data {
     text-align: center;
@@ -718,3 +812,179 @@ main {
 .progress-complete { color: var(--color-success); font-weight: 600; }
 .progress-active { color: var(--color-warning); }
 .progress-zero { color: #999; }
+
+/* 新版时间轴样式 */
+.timeline-arrow-container {
+    position: relative;
+    margin: 40px 0 60px;
+    height: 100px;
+}
+
+.timeline-arrow {
+    position: absolute;
+    top: 50px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-primary);
+}
+
+.timeline-arrow::after {
+    content: '';
+    position: absolute;
+    right: -10px;
+    top: -5px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid var(--color-primary);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+}
+
+.timeline-marker {
+    position: absolute;
+    top: 0;
+    width: 120px;
+    margin-left: -60px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.timeline-marker .version-stage {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+
+.timeline-marker .test-stage {
+    font-size: 11px;
+    color: var(--color-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timeline-marker .marker-dot {
+    width: 12px;
+    height: 12px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    margin: 4px auto;
+    position: relative;
+}
+
+.timeline-marker .marker-line {
+    width: 2px;
+    height: 20px;
+    background: var(--color-secondary);
+    margin: 0 auto;
+}
+
+.timeline-marker.overdue .marker-dot {
+    background: var(--color-danger);
+}
+
+.timeline-marker.overdue .version-stage,
+.timeline-marker.overdue .test-stage {
+    color: var(--color-danger);
+}
+
+.timeline-date {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+}
+
+.timeline-actions {
+    position: absolute;
+    top: 85px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.timeline-marker:hover .timeline-actions {
+    opacity: 1;
+}
+
+.timeline-edit-btn,
+.timeline-delete-btn {
+    padding: 2px 6px;
+    font-size: 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.timeline-edit-btn {
+    background: var(--color-secondary);
+    color: white;
+}
+
+.timeline-delete-btn {
+    background: var(--color-danger);
+    color: white;
+}
+
+.timeline-edit-btn:hover {
+    background: #7a8a7a;
+}
+
+.timeline-delete-btn:hover {
+    background: #d32f2f;
+}
+
+/* 文字垂直错开样式 */
+.timeline-marker .text-top {
+    transform: translateY(-10px);
+}
+
+.timeline-marker .text-middle {
+    transform: translateY(0);
+}
+
+.timeline-marker .text-bottom {
+    transform: translateY(10px);
+}
+
+/* 确保绝对定位元素也能应用transform */
+.timeline-marker .timeline-date.text-top,
+.timeline-marker .timeline-date.text-middle,
+.timeline-marker .timeline-date.text-bottom {
+    position: absolute;
+    transform: translate(-50%, var(--translate-y, 0));
+}
+
+.timeline-marker .timeline-date.text-top {
+    --translate-y: -10px;
+}
+
+.timeline-marker .timeline-date.text-middle {
+    --translate-y: 0;
+}
+
+.timeline-marker .timeline-date.text-bottom {
+    --translate-y: 10px;
+}
+
+/* 确保标记不会超出容器 */
+.timeline-arrow-container {
+    min-height: 100px;
+}
+
+/* 防止文字超出容器顶部 */
+.timeline-marker .version-stage.text-top,
+.timeline-marker .test-stage.text-top {
+    margin-top: 0;
+    padding-top: 2px;
+}

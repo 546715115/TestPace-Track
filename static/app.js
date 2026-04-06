@@ -3,10 +3,13 @@
 let currentVersion = null;
 let currentSheet = null;
 let currentSheets = [];
-let allRequirements = [];
+let allRequirements = [];      // 原始所有行
+let mergedRequirements = [];   // 合并后的实际需求
 let allGroups = [];
 let allStats = {};
 let versionPlans = [];
+let currentRiskDetailFiltered = [];  // 当前风险详情弹窗的筛选数据
+let currentRiskDetailType = '';      // 当前风险详情类型
 
 // ============ 初始化 ============
 
@@ -32,11 +35,29 @@ function setupEventListeners() {
     document.getElementById('cookie-cancel-btn').addEventListener('click', hideCookieModal);
     document.getElementById('cookie-form').addEventListener('submit', saveCookie);
     document.getElementById('empty-fields-close-btn').addEventListener('click', hideEmptyFieldsModal);
+    document.getElementById('risk-detail-close-btn').addEventListener('click', hideRiskDetailModal);
+    document.getElementById('risk-detail-tester-filter').addEventListener('change', filterRiskDetailByTester);
 
     document.querySelectorAll('.risk-cards .card').forEach(card => {
         card.addEventListener('click', (e) => {
             const type = e.target.closest('[data-type]')?.dataset.type;
             if (type) filterByRiskType(type, e.target);
+        });
+    });
+
+    // 统计卡片点击事件
+    document.querySelectorAll('.stat-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            const h3 = e.target.closest('.stat-card')?.querySelector('h3');
+            if (!h3) return;
+            const text = h3.textContent;
+            if (text.includes('未开始')) {
+                showRiskDetailModal('not-started', '未开始');
+            } else if (text.includes('进行中')) {
+                showRiskDetailModal('in-progress', '进行中');
+            } else if (text.includes('已完成')) {
+                showRiskDetailModal('completed', '已完成');
+            }
         });
     });
 }
@@ -138,6 +159,9 @@ async function loadData() {
             allGroups = data.data.groups;
             allStats = data.data.stats || {};
 
+            // 构建合并后的实际需求（用于统计）
+            mergedRequirements = allRequirements.filter(r => r._is_first_in_group);
+
             renderStats();
             renderRiskCards();
             populateTesterFilter();
@@ -204,29 +228,140 @@ function renderTimeline() {
         return;
     }
 
-    const byVersion = {};
+    // 按version_id分组
+    const byVersionId = {};
     versionPlans.forEach(p => {
-        if (!byVersion[p.version_name]) {
-            byVersion[p.version_name] = [];
+        if (!byVersionId[p.version_id]) {
+            byVersionId[p.version_id] = [];
         }
-        byVersion[p.version_name].push(p);
+        byVersionId[p.version_id].push(p);
     });
 
     let html = '';
-    for (const [versionName, plans] of Object.entries(byVersion)) {
-        html += `<div class="timeline-version">`;
-        html += `<h4 style="margin:0 0 8px;color:var(--color-primary)">${versionName}</h4>`;
-        html += `<div class="timeline-stages">`;
+    for (const [versionId, plans] of Object.entries(byVersionId)) {
+        // 过滤有日期的计划，用于计算时间范围
+        const datedPlans = plans.filter(p => p.target_date && p.target_date.trim());
 
+        // 计算时间范围
+        let minDate = null, maxDate = null;
+        if (datedPlans.length > 0) {
+            const dates = datedPlans.map(p => new Date(p.target_date));
+            minDate = new Date(Math.min(...dates));
+            maxDate = new Date(Math.max(...dates));
+
+            // 扩展范围，让第一个和最后一个点不要贴在边缘
+            const range = maxDate - minDate;
+            if (range > 0) {
+                minDate = new Date(minDate.getTime() - range * 0.1);
+                maxDate = new Date(maxDate.getTime() + range * 0.1);
+            } else {
+                // 如果所有日期相同，扩展前后各一天
+                minDate = new Date(minDate.getTime() - 24 * 60 * 60 * 1000);
+                maxDate = new Date(maxDate.getTime() + 24 * 60 * 60 * 1000);
+            }
+        }
+
+        // 版本标题
+        html += `<div class="timeline-version">`;
+        html += `<h4 style="margin:0 0 8px;color:var(--color-primary)">版本 ${versionId}</h4>`;
+
+        // 时间轴容器
+        html += `<div class="timeline-arrow-container">`;
+        html += `<div class="timeline-arrow"></div>`;
+
+        // 计算每个计划的位置并存储
+        const planPositions = [];
         plans.sort((a, b) => a.id - b.id).forEach(plan => {
             const isOverdue = plan.target_date && new Date(plan.target_date) < new Date();
+
+            // 计算位置百分比
+            let leftPercent = 50; // 默认居中
+            if (plan.target_date && minDate && maxDate) {
+                const planDate = new Date(plan.target_date);
+                const totalRange = maxDate - minDate;
+                if (totalRange > 0) {
+                    const position = (planDate - minDate) / totalRange;
+                    leftPercent = Math.max(0, Math.min(100, position * 100));
+                }
+            }
+
+            planPositions.push({
+                plan: plan,
+                leftPercent: leftPercent,
+                isOverdue: isOverdue
+            });
+        });
+
+        // 按位置排序，用于重叠检测
+        const sortedPositions = [...planPositions].sort((a, b) => a.leftPercent - b.leftPercent);
+
+        // 重叠检测：如果两个标记的位置相差小于5%，认为重叠
+        const OVERLAP_THRESHOLD = 5; // 百分比
+        const positionGroups = [];
+
+        for (let i = 0; i < sortedPositions.length; i++) {
+            const current = sortedPositions[i];
+
+            // 查找与当前标记重叠的组
+            let foundGroup = false;
+            for (let j = 0; j < positionGroups.length; j++) {
+                const group = positionGroups[j];
+                // 检查当前标记是否与组内任一标记重叠
+                if (group.some(item => Math.abs(item.leftPercent - current.leftPercent) < OVERLAP_THRESHOLD)) {
+                    group.push(current);
+                    foundGroup = true;
+                    break;
+                }
+            }
+
+            // 如果没有找到重叠组，创建新组
+            if (!foundGroup) {
+                positionGroups.push([current]);
+            }
+        }
+
+        // 为每个重叠组内的标记分配文字和日期垂直位置
+        positionGroups.forEach(group => {
+            if (group.length === 1) {
+                // 单个标记：文字在上，日期在下
+                group[0].textPosition = 'text-top';
+                group[0].datePosition = 'text-bottom';
+            } else if (group.length === 2) {
+                // 两个标记：交替分配相反位置
+                group[0].textPosition = 'text-top';
+                group[0].datePosition = 'text-bottom';
+                group[1].textPosition = 'text-bottom';
+                group[1].datePosition = 'text-top';
+            } else {
+                // 三个或更多标记：循环分配组合
+                const combinations = [
+                    { text: 'text-top', date: 'text-bottom' },
+                    { text: 'text-middle', date: 'text-middle' },
+                    { text: 'text-bottom', date: 'text-top' }
+                ];
+                group.forEach((item, index) => {
+                    const combo = combinations[index % combinations.length];
+                    item.textPosition = combo.text;
+                    item.datePosition = combo.date;
+                });
+            }
+        });
+
+        // 渲染所有标记
+        planPositions.forEach(item => {
+            const { plan, leftPercent, isOverdue, textPosition = 'text-top', datePosition = 'text-bottom' } = item;
+            const overdueClass = isOverdue ? 'overdue' : '';
+
             html += `
-                <div class="timeline-stage ${isOverdue ? 'overdue' : ''}">
-                    <span class="stage-name">${plan.stage_name}</span>
-                    <span class="stage-date">${plan.target_date || '未设置'}</span>
-                    <div class="stage-actions">
-                        <button class="edit-btn" onclick="editPlan(${plan.id}, '${plan.stage_name}', '${plan.target_date || ''}')">编辑</button>
-                        <button class="delete-btn" onclick="deletePlan(${plan.id})">删除</button>
+                <div class="timeline-marker ${overdueClass}" style="left: ${leftPercent}%;">
+                    <div class="version-stage ${textPosition}" title="${plan.version_name}">${plan.version_name}</div>
+                    <div class="marker-dot" onclick="editPlan(${plan.id}, '${plan.stage_name}', '${plan.target_date || ''}')"></div>
+                    <div class="test-stage ${textPosition}" title="${plan.stage_name}">${plan.stage_name}</div>
+                    <div class="marker-line"></div>
+                    <div class="timeline-date ${datePosition}">${plan.target_date || '未设置'}</div>
+                    <div class="timeline-actions">
+                        <button class="timeline-edit-btn" onclick="editPlan(${plan.id}, '${plan.stage_name}', '${plan.target_date || ''}'); event.stopPropagation();">编辑</button>
+                        <button class="timeline-delete-btn" onclick="deletePlan(${plan.id}); event.stopPropagation();">删除</button>
                     </div>
                 </div>
             `;
@@ -254,10 +389,22 @@ function hidePlanModal() {
 
 async function saveVersionPlan(e) {
     e.preventDefault();
+    const versionStageName = document.getElementById('plan-version-stage-name').value;
+    const testStageName = document.getElementById('plan-stage-name').value;
+
+    if (!versionStageName) {
+        alert('请选择版本阶段名称');
+        return;
+    }
+    if (!testStageName) {
+        alert('请选择测试阶段名称');
+        return;
+    }
+
     const formData = {
         version_id: document.getElementById('plan-version-id').value,
-        version_name: 'Beta_T1',
-        stage_name: document.getElementById('plan-stage-name').value,
+        version_name: versionStageName,
+        stage_name: testStageName,
         target_date: document.getElementById('plan-target-date').value
     };
 
@@ -333,17 +480,20 @@ function renderStats() {
 }
 
 function renderRiskCards() {
+    // 使用mergedRequirements（实际需求数）来统计
+    const merged = mergedRequirements.length > 0 ? mergedRequirements : allRequirements.filter(r => r._is_first_in_group);
+
     const risks = {
-        not_started: allRequirements.filter(r =>
-            r.risks && (r.risks.includes('serial_review_incomplete') || r.risks.includes('reverse_serial_incomplete'))
+        not_started: merged.filter(r =>
+            r.risks && (r.risks.includes('serial_review_incomplete') || r.risks.includes('serial review incomplete'))
         ),
-        reverse_delayed: allRequirements.filter(r =>
-            r.risks && r.risks.includes('reverse_serial_incomplete')
+        reverse_delayed: merged.filter(r =>
+            r.risks && (r.risks.includes('reverse_serial_incomplete') || r.risks.includes('reverse serial incomplete'))
         ),
-        test_delayed: allRequirements.filter(r =>
-            r.risks && r.risks.includes('test_progress_delayed')
+        test_delayed: merged.filter(r =>
+            r.risks && (r.risks.includes('test_progress_delayed') || r.risks.includes('test progress delayed'))
         ),
-        empty_fields: allRequirements.filter(r =>
+        empty_fields: merged.filter(r =>
             r.risks && r.risks.some(risk => risk.startsWith('empty_field_'))
         )
     };
@@ -389,18 +539,18 @@ function filterByRiskType(type, target) {
         return;
     }
 
-    let filtered = allRequirements;
-
     if (type === 'not-started') {
-        filtered = filtered.filter(r =>
-            r.risks && (r.risks.includes('serial_review_incomplete') || r.risks.includes('reverse_serial_incomplete'))
-        );
+        showRiskDetailModal('serial-review-incomplete', '需求串讲/设计未完成');
+        return;
     } else if (type === 'reverse-delayed') {
-        filtered = filtered.filter(r => r.risks && r.risks.includes('reverse_serial_incomplete'));
+        showRiskDetailModal('reverse-delayed', '反串讲完成进度滞后');
+        return;
     } else if (type === 'test-delayed') {
-        filtered = filtered.filter(r => r.risks && r.risks.includes('test_progress_delayed'));
+        showRiskDetailModal('test-delayed', '需求测试完成进度滞后');
+        return;
     }
 
+    let filtered = allRequirements;
     const tester = document.getElementById('tester-filter').value;
     if (tester) filtered = filtered.filter(r => r['测试人员'] === tester);
 
@@ -431,6 +581,245 @@ async function showEmptyFieldsModal() {
 
 function hideEmptyFieldsModal() {
     document.getElementById('empty-fields-modal').classList.remove('show');
+}
+
+function showRiskDetailModal(type, title) {
+    if (!currentVersion) {
+        alert('请先选择版本');
+        return;
+    }
+
+    currentRiskDetailType = type;
+
+    // 如果mergedRequirements为空，尝试用allRequirements
+    if (!mergedRequirements || mergedRequirements.length === 0) {
+        mergedRequirements = allRequirements.filter(r => r._is_first_in_group);
+    }
+
+    // 判断条件函数
+    function matchesType(r) {
+        const progress = r['测试进度'] || 0;
+        if (type === 'not-started') {
+            return progress === 0;
+        } else if (type === 'in-progress') {
+            return progress > 0 && progress < 100;
+        } else if (type === 'completed') {
+            return progress >= 100;
+        } else if (type === 'serial-review-incomplete') {
+            return r.risks && (r.risks.includes('serial_review_incomplete') || r.risks.includes('serial review incomplete') || r.risks.includes('reverse_serial_incomplete') || r.risks.includes('reverse serial incomplete'));
+        } else if (type === 'reverse-delayed') {
+            return r.risks && (r.risks.includes('reverse_serial_incomplete') || r.risks.includes('reverse serial incomplete'));
+        } else if (type === 'test-delayed') {
+            return r.risks && (r.risks.includes('test_progress_delayed') || r.risks.includes('test progress delayed'));
+        }
+        return false;
+    }
+
+    // 1. 先找出满足条件的组索引（基于每组第一行）
+    const matchedGroupIdxs = new Set();
+    allRequirements.forEach(r => {
+        if (r._is_first_in_group && matchesType(r)) {
+            matchedGroupIdxs.add(r._group_idx);
+        }
+    });
+
+    // 2. 保留满足条件的组的所有行，保持allRequirements原始顺序
+    // 这样能确保同组数据连续且顺序正确
+    const allRowsWithIndex = allRequirements.map((r, index) => ({...r, originalIndex: index}));
+    let filtered = allRowsWithIndex.filter(r => matchedGroupIdxs.has(r._group_idx));
+
+    // 按原始索引排序，确保顺序与主表格一致
+    filtered.sort((a, b) => a.originalIndex - b.originalIndex);
+
+    // 显示最终结果数量（基于合并后的需求数）
+    document.getElementById('risk-detail-title').textContent = title + ' (结果数=' + matchedGroupIdxs.size + ')';
+
+    // 保存筛选后的数据
+    currentRiskDetailFiltered = filtered;
+    renderRiskDetailModal(filtered, title);
+    document.getElementById('risk-detail-modal').classList.add('show');
+}
+
+function hideRiskDetailModal() {
+    document.getElementById('risk-detail-modal').classList.remove('show');
+}
+
+function filterRiskDetailByTester() {
+    const tester = document.getElementById('risk-detail-tester-filter').value;
+    let filtered = currentRiskDetailFiltered;
+
+    if (tester) {
+        // 找出有该测试人员的组（基于原始筛选数据）
+        const keepGroupIdxs = new Set();
+        filtered.forEach(r => {
+            if (r['测试人员'] && r['测试人员'].includes(tester)) {
+                keepGroupIdxs.add(r._group_idx);
+            }
+        });
+
+        // 保留这些组的所有行
+        filtered = filtered.filter(r => keepGroupIdxs.has(r._group_idx));
+    }
+
+    renderRiskDetailTable(filtered);
+}
+
+function renderRiskDetailModal(data, title) {
+    document.getElementById('risk-detail-title').textContent = title + ' 详情';
+
+    // 只取每组第一行（合并后的实际需求）
+    const mergedData = data.filter(r => r._is_first_in_group);
+
+    // 按测试人员汇总
+    const testerStats = {};
+    mergedData.forEach(r => {
+        const testers = (r['测试人员'] || '').split(',').map(t => t.trim()).filter(t => t);
+        testers.forEach(tester => {
+            if (!testerStats[tester]) {
+                testerStats[tester] = 0;
+            }
+            testerStats[tester]++;
+        });
+    });
+
+    // 渲染汇总行
+    const summaryDiv = document.getElementById('risk-detail-summary');
+    let summaryHtml = '';
+    Object.keys(testerStats).sort().forEach(tester => {
+        summaryHtml += `<div class="risk-detail-summary-item"><span class="tester-name">${tester}</span>: <span class="count">${testerStats[tester]}</span>个</div>`;
+    });
+    summaryDiv.innerHTML = summaryHtml || '<div class="no-data">暂无数据</div>';
+
+    // 渲染测试人员筛选下拉
+    const testerSelect = document.getElementById('risk-detail-tester-filter');
+    const testers = Object.keys(testerStats).sort();
+    testerSelect.innerHTML = '<option value="">全部测试人员</option>';
+    testers.forEach(tester => {
+        testerSelect.innerHTML += `<option value="${tester}">${tester}</option>`;
+    });
+
+    // 渲染表格（传入所有原始行数据，用rowspan合并特性分类和测试进度）
+    renderRiskDetailTable(data);
+}
+
+function renderRiskDetailTable(data) {
+    const tbody = document.getElementById('risk-detail-tbody');
+    const escapeHtml = (str) => {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">暂无数据</td></tr>';
+        return;
+    }
+
+    // 调试：检查所有数据的分组完整性
+    console.log('弹窗表格数据完整性检查:');
+    const groups = {};
+    data.forEach((r, i) => {
+        const groupIdx = r._group_idx;
+        if (!groups[groupIdx]) {
+            groups[groupIdx] = {
+                firstRowIndex: r._is_first_in_group ? i : -1,
+                rows: [],
+                rowSpan: r._row_span,
+                count: 0,
+                progressValues: []
+            };
+        }
+        groups[groupIdx].rows.push({
+            index: i,
+            reqNo: r['需求编号'],
+            isFirst: r._is_first_in_group,
+            rowSpan: r._row_span,
+            progress: r['测试进度'] || 0
+        });
+        groups[groupIdx].progressValues.push(r['测试进度'] || 0);
+        groups[groupIdx].count++;
+    });
+
+    // 验证每个组的测试进度是否一致（应该都是最小值）
+    Object.entries(groups).forEach(([gid, g]) => {
+        const uniqueProgress = [...new Set(g.progressValues)];
+        if (uniqueProgress.length > 1) {
+            console.warn(`⚠️ 组 ${gid} 的测试进度不一致:`, g.progressValues, '最小值应为:', Math.min(...g.progressValues));
+        }
+    });
+
+    console.log('分组统计:', Object.entries(groups).map(([gid, g]) => ({
+        groupIdx: gid,
+        rowSpan: g.rowSpan,
+        actualRows: g.count,
+        firstRowIndex: g.firstRowIndex,
+        progressValues: [...new Set(g.progressValues)], // 去重显示
+        rows: g.rows
+    })));
+
+    let html = '';
+
+    for (const r of data) {
+        const progress = r['测试进度'] || 0;
+        const progressClass = progress >= 100 ? 'progress-complete' : progress > 0 ? 'progress-active' : 'progress-zero';
+
+        // 非第一行：只输出per-row列（需求编号、需求描述），其他列已被rowspan合并
+        if (!r._is_first_in_group) {
+            console.log('非首行数据:', {
+                '需求编号': r['需求编号'],
+                '需求描述': r['需求描述']?.substring(0, 20) + '...',
+                'group_idx': r._group_idx
+            });
+            html += `<tr data-group-idx="${r._group_idx}" data-is-first="false">
+                <td class="req-no-cell">${escapeHtml(r['需求编号'])}</td>
+                <td class="desc-cell" title="${escapeHtml(r['需求描述'])}">${escapeHtml(r['需求描述'])}</td>
+            </tr>`;
+            continue;
+        }
+
+        // 第一行：带rowspan的合并列
+        html += `<tr data-group-idx="${r._group_idx}" data-is-first="true">`;
+        const rowSpanAttr = r._row_span > 1 ? ` rowspan="${r._row_span}"` : '';
+
+        // 特性分类列
+        html += `<td${rowSpanAttr} class="merged-cell">${escapeHtml(r['特性分类'])}</td>`;
+
+        // per-row列
+        html += `<td>${escapeHtml(r['需求编号'])}</td>`;
+        html += `<td class="desc-cell" title="${escapeHtml(r['需求描述'])}">${escapeHtml(r['需求描述'])}</td>`;
+
+        // 测试进度列
+        html += `<td${rowSpanAttr} class="${progressClass}">${progress}%</td>`;
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+// 简化的弹窗表格渲染（只显示合并后的需求，每组一行）
+function renderRiskDetailTableSimple(data) {
+    const tbody = document.getElementById('risk-detail-tbody');
+    const escapeHtml = (str) => {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">暂无数据</td></tr>';
+        return;
+    }
+
+    let html = '';
+    for (const r of data) {
+        const progress = r['测试进度'] || 0;
+        const progressClass = progress >= 100 ? 'progress-complete' : progress > 0 ? 'progress-active' : 'progress-zero';
+
+        html += '<tr>';
+        html += `<td>${escapeHtml(r['特性分类'])}</td>`;
+        html += `<td>${escapeHtml(r['需求编号'])}</td>`;
+        html += `<td class="desc-cell" title="${escapeHtml(r['需求描述'])}">${escapeHtml(r['需求描述'])}</td>`;
+        html += `<td class="${progressClass}">${progress}%</td>`;
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
 }
 
 function renderEmptyFieldsTable(data) {

@@ -143,13 +143,28 @@
             <form id="plan-form">
                 <input type="hidden" id="plan-version-id">
                 <div class="form-group">
-                    <label>阶段名称</label>
-                    <select id="plan-stage-name">
+                    <label>版本阶段名称</label>
+                    <select id="plan-version-stage-name" required>
+                        <option value="">请选择版本阶段</option>
+                        <option value="Beta_T1">Beta_T1</option>
+                        <option value="Beta_T2">Beta_T2</option>
+                        <option value="Beta_T3">Beta_T3</option>
+                        <option value="Gamma">Gamma</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>测试阶段名称</label>
+                    <select id="plan-stage-name" required>
+                        <option value="">请选择测试阶段</option>
                         <option value="需求串讲/设计完成">需求串讲/设计完成</option>
                         <option value="需求反串讲完成">需求反串讲完成</option>
                         <option value="需求测试阶段">需求测试阶段</option>
                         <option value="需求测试完成">需求测试完成</option>
                         <option value="需求问题单验收完成">需求问题单验收完成</option>
+                        <option value="基础用例执行完成">基础用例执行完成</option>
+                        <option value="基础用全部问题单验收完成">基础用全部问题单验收完成</option>
+                        <option value="Gamma/Sop验证完成">Gamma/Sop验证完成</option>
+                        <option value="版本发布评审">版本发布评审</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -250,6 +265,36 @@
             </div>
             <div class="form-actions">
                 <button type="button" class="btn-secondary" id="empty-fields-close-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 风险详情弹窗 -->
+    <div class="modal" id="risk-detail-modal">
+        <div class="modal-content modal-wide">
+            <div class="risk-detail-header">
+                <h3 id="risk-detail-title">风险详情</h3>
+                <button type="button" class="btn-secondary" id="risk-detail-close-btn">关闭</button>
+            </div>
+            <div class="risk-detail-summary" id="risk-detail-summary"></div>
+            <div class="risk-detail-filter">
+                <select id="risk-detail-tester-filter">
+                    <option value="">全部测试人员</option>
+                </select>
+            </div>
+            <div class="risk-detail-table-wrapper">
+                <table class="risk-detail-table" id="risk-detail-table">
+                    <thead>
+                        <tr>
+                            <th>特性分类</th>
+                            <th>需求编号</th>
+                            <th>需求描述</th>
+                            <th>测试进度</th>
+                        </tr>
+                    </thead>
+                    <tbody id="risk-detail-tbody">
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
