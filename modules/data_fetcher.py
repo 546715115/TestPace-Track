@@ -62,6 +62,17 @@ class DataFetcher:
 
             response = self.session.get(self.HOME_URL, headers=headers, timeout=30)
             print(f"Init session status: {response.status_code}")
+            print(f"Init session Set-Cookie: {response.headers.get('Set-Cookie', 'none')}")
+
+            # 从响应头中提取更新后的 CSRF token
+            set_cookie = response.headers.get('Set-Cookie', '')
+            if set_cookie:
+                match = re.search(r'wapcsrftoken=([^;]+)', set_cookie, re.IGNORECASE)
+                if match:
+                    new_csrf = match.group(1)
+                    self.session.cookies.set('wapcsrftoken', new_csrf)
+                    print(f"Updated CSRF from Set-Cookie: {new_csrf[:30]}...")
+
             return response.status_code == 200
         except Exception as e:
             print(f"Init session error: {e}")
@@ -106,6 +117,7 @@ class DataFetcher:
             print(f"Status: {response.status_code}")
             print(f"Content-Type: {response.headers.get('Content-Type', 'unknown')}")
             print(f"Content-Length: {response.headers.get('Content-Length', 'unknown')}")
+            print(f"Response text: {response.text}")
 
             # 检查是否是文件下载（Content-Disposition 头）
             content_disposition = response.headers.get('Content-Disposition', '')
