@@ -28,6 +28,8 @@ class DataFetcher:
         self.cookie = get_cookie_config().get('cookie', '')
         self.csrf_token = self._extract_csrf_token()
         self.session = requests.Session()
+        if self.csrf_token:
+            self.session.cookies.set('wapcsrftoken', self.csrf_token)
 
     def _extract_csrf_token(self) -> Optional[str]:
         """从 Cookie 中提取 CSRF token"""
@@ -47,6 +49,24 @@ class DataFetcher:
 
         return None
 
+    def init_session(self) -> bool:
+        """初始化会话，先访问 OneBox 首页"""
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            }
+            if self.cookie:
+                headers['Cookie'] = self.cookie
+
+            response = self.session.get(self.HOME_URL, headers=headers, timeout=30)
+            print(f"Init session status: {response.status_code}")
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Init session error: {e}")
+            return False
+
     def construct_download_url(self, bucket_path: str, doc_id: str) -> str:
         """
         构建下载 URL
@@ -60,6 +80,9 @@ class DataFetcher:
         url = self.construct_download_url(bucket_path, doc_id)
 
         try:
+            # 先初始化会话
+            self.init_session()
+
             print(f"\n=== Download Request ===")
             print(f"URL: {url}")
             print(f"Cookie length: {len(self.cookie) if self.cookie else 0} chars")
