@@ -38,16 +38,21 @@ class DataFetcher:
         url = self.construct_download_url(bucket_path, doc_id)
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Referer': 'https://onebox.huawei.com/'
             }
             if self.cookie:
                 headers['Cookie'] = self.cookie
+
+            print(f"Request URL: {url}")
+            print(f"Cookie length: {len(self.cookie) if self.cookie else 0}")
+
             response = requests.get(url, headers=headers, timeout=30)
 
             # 打印调试信息
             print(f"API Response Status: {response.status_code}")
-            print(f"API Response Headers: {dict(response.headers)}")
             print(f"API Response Text (first 500 chars): {response.text[:500] if response.text else 'Empty'}")
 
             if response.status_code != 200:
@@ -57,7 +62,6 @@ class DataFetcher:
             return data.get('data')
         except Exception as e:
             print(f"Error getting download link: {e}")
-            print(f"Response text: {response.text if 'response' in dir() else 'N/A'}")
             return None
 
     def download_excel(self, bucket_path: str, doc_id: str, save_path: str) -> bool:
