@@ -81,27 +81,76 @@ class DataFetcher:
             response = self.session.get(url, headers=headers, timeout=30)
 
             print(f"Status: {response.status_code}")
-            print(f"Response: {response.text[:300] if response.text else 'Empty'}")
+            print(f"Content-Type: {response.headers.get('Content-Type', 'unknown')}")
+            print(f"Content-Length: {response.headers.get('Content-Length', 'unknown')}")
 
-            if response.status_code != 200:
+            # 检查是否是文件下载（Content-Disposition 头）
+            content_disposition = response.headers.get('Content-Disposition', '')
+            if 'attachment' in content_disposition or 'download' in content_disposition:
+                # 直接返回响应内容
+                return response.content
+
+            # 检查是否是 JSON 响应
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' in content_type:
+                data = response.json()
+                return data.get('data')
+
+            # 如果是 HTML 页面，尝试提取下载链接
+            if 'text/html' in content_type:
+                import re
+                # 尝试从 HTML 中提取下载链接
+                patterns = [
+                    r"downloadUrl\s*[=:]\s*['\"]([^'\"]+)['\"]",
+                    r"download_url\s*[=:]\s*['\"]([^'\"]+)['\"]",
+                    r"url\s*[=:]\s*['\"]([^'\"]+\.xlsx?)['\"]",
+                    r"href\s*=\s*['\"]([^'\"]+\.xlsx?)['\"]",
+                    r"download\s*[=:]\s*['\"]([^'\"]+)['\"]",
+                ]
+                for pattern in patterns:
+                    match = re.search(pattern, response.text, re.IGNORECASE)
+                    if match:
+                        download_url = match.group(1)
+                        print(f"Found download URL in HTML: {download_url[:100]}...")
+                        return download_url
+
+                # 如果找不到，返回 None（无法解析）
+                print(f"HTML response but no download URL found")
                 return None
 
-            data = response.json()
-            return data.get('data')
+            return None
         except Exception as e:
             print(f"Error: {e}")
             return None
 
     def download_excel(self, bucket_path: str, doc_id: str, save_path: str) -> bool:
         """下载 Excel 文件到指定路径"""
-        download_url = self.get_download_link(bucket_path, doc_id)
+        result = self.get_download_link(bucket_path, doc_id)
+
+        # 如果返回的是 bytes（直接是文件内容），直接保存
+        if isinstance(result, bytes):
+            try:
+                with open(save_path, 'wb') as f:
+                    f.write(result)
+                print(f"Saved {len(result)} bytes to {save_path}")
+                return True
+            except Exception as e:
+                print(f"Save error: {e}")
+                return False
+
+        # 如果返回的是 URL，再下载
+        download_url = result
         if not download_url:
             return False
 
         try:
-            headers = {}
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'https://onebox.huawei.com/'
+            }
             if self.cookie:
                 headers['Cookie'] = self.cookie
+
             response = requests.get(download_url, headers=headers, stream=True, timeout=60)
             if response.status_code == 200:
                 with open(save_path, 'wb') as f:
