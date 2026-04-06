@@ -197,9 +197,47 @@ class DataFetcher:
             print(f"Download error: {e}")
             return False
 
+    def download_from_url(self, download_url: str, version_name: str, cache_dir: str) -> Optional[str]:
+        """
+        直接从下载链接下载 Excel 到缓存
+        命名格式: {version_name}_{date}.xlsx
+        """
+        os.makedirs(cache_dir, exist_ok=True)
+        date_str = datetime.now().strftime('%Y%m%d')
+        filename = f"{version_name}_{date_str}.xlsx"
+        save_path = os.path.join(cache_dir, filename)
+
+        try:
+            print(f"\n=== Downloading from URL ===")
+            print(f"URL: {download_url}")
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'https://onebox.huawei.com/'
+            }
+            if self.cookie:
+                headers['Cookie'] = self.cookie
+
+            response = requests.get(download_url, headers=headers, stream=True, timeout=60)
+            print(f"Status: {response.status_code}")
+            print(f"Content-Type: {response.headers.get('Content-Type', 'unknown')}")
+
+            if response.status_code == 200:
+                with open(save_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                print(f"Saved to {save_path}")
+                return save_path
+            else:
+                print(f"Download failed: {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"Download error: {e}")
+            return None
+
     def save_to_cache(self, bucket_path: str, doc_id: str, version_name: str, cache_dir: str) -> Optional[str]:
         """
-        下载并保存到缓存
+        下载并保存到缓存（旧接口，保留兼容）
         命名格式: {version_name}_{date}.xlsx
         """
         os.makedirs(cache_dir, exist_ok=True)

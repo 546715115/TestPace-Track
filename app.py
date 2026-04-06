@@ -93,8 +93,7 @@ def create_document():
     new_doc = {
         'version_id': data.get('version_id'),
         'name': data.get('name'),
-        'bucket_path': data.get('bucket_path'),
-        'doc_id': data.get('doc_id')
+        'download_url': data.get('download_url')
     }
 
     # 检查是否已存在
@@ -120,8 +119,7 @@ def update_document(version_id):
             config['documents'][i] = {
                 'version_id': version_id,
                 'name': data.get('name', doc.get('name')),
-                'bucket_path': data.get('bucket_path', doc.get('bucket_path')),
-                'doc_id': data.get('doc_id', doc.get('doc_id'))
+                'download_url': data.get('download_url', doc.get('download_url'))
             }
             save_config_documents(config)
             return jsonify({'success': True, 'data': {'document': config['documents'][i]}})
@@ -182,7 +180,7 @@ def get_sheets():
 
 @app.route('/api/download', methods=['POST'])
 def download_document():
-    """从 OneBox API 下载文档"""
+    """从 OneBox 下载文档"""
     data = request.json
     version_id = data.get('version_id')
 
@@ -200,14 +198,17 @@ def download_document():
     if not doc:
         return jsonify({'success': False, 'error': '文档配置不存在'})
 
+    download_url = doc.get('download_url')
+    if not download_url:
+        return jsonify({'success': False, 'error': '下载链接不存在'})
+
     try:
         fetcher = DataFetcher()
         cache_dir = os.path.join(os.path.dirname(__file__), 'data', 'cache')
         os.makedirs(cache_dir, exist_ok=True)
 
-        save_path = fetcher.save_to_cache(
-            bucket_path=doc.get('bucket_path'),
-            doc_id=doc.get('doc_id'),
+        save_path = fetcher.download_from_url(
+            download_url=download_url,
             version_name=doc.get('name', version_id),
             cache_dir=cache_dir
         )

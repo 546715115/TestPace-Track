@@ -1010,8 +1010,7 @@ async function editDocument(versionId) {
                 document.getElementById('config-version-id').value = doc.version_id;
                 document.getElementById('config-version-id').disabled = true;
                 document.getElementById('config-name').value = doc.name || '';
-                document.getElementById('config-bucket-path').value = doc.bucket_path || '';
-                document.getElementById('config-doc-id').value = doc.doc_id || '';
+                document.getElementById('config-download-url').value = doc.download_url || '';
                 document.getElementById('config-form-title').textContent = '编辑文档';
             }
         }
@@ -1047,8 +1046,7 @@ async function saveDocumentConfig(e) {
     const configData = {
         version_id: document.getElementById('config-version-id').value,
         name: document.getElementById('config-name').value,
-        bucket_path: document.getElementById('config-bucket-path').value,
-        doc_id: document.getElementById('config-doc-id').value
+        download_url: document.getElementById('config-download-url').value
     };
 
     try {
