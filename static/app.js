@@ -31,9 +31,6 @@ function setupEventListeners() {
     document.getElementById('config-close-btn').addEventListener('click', hideConfigModal);
     document.getElementById('config-cancel-btn').addEventListener('click', resetConfigForm);
     document.getElementById('config-form').addEventListener('submit', saveDocumentConfig);
-    document.getElementById('cookie-btn').addEventListener('click', showCookieModal);
-    document.getElementById('cookie-cancel-btn').addEventListener('click', hideCookieModal);
-    document.getElementById('cookie-form').addEventListener('submit', saveCookie);
     document.getElementById('empty-fields-close-btn').addEventListener('click', hideEmptyFieldsModal);
     document.getElementById('risk-detail-close-btn').addEventListener('click', hideRiskDetailModal);
     document.getElementById('risk-detail-tester-filter').addEventListener('change', filterRiskDetailByTester);
@@ -1077,60 +1074,6 @@ async function saveDocumentConfig(e) {
         }
     } catch (error) {
         console.error('Failed to save document:', error);
-        alert('保存失败');
-    }
-}
-
-// ============ Cookie 配置 ============
-
-async function showCookieModal() {
-    await checkCookieStatus();
-    document.getElementById('cookie-modal').classList.add('show');
-}
-
-function hideCookieModal() {
-    document.getElementById('cookie-modal').classList.remove('show');
-    document.getElementById('cookie-form').reset();
-}
-
-async function checkCookieStatus() {
-    try {
-        const response = await fetch('/api/cookie');
-        const data = await response.json();
-        if (data.success) {
-            const statusEl = document.getElementById('cookie-status-value');
-            if (data.data.configured) {
-                statusEl.textContent = '✅ 已配置';
-                statusEl.style.color = 'var(--color-success)';
-            } else {
-                statusEl.textContent = '⚠️ 未配置';
-                statusEl.style.color = 'var(--color-warning)';
-            }
-        }
-    } catch (error) {
-        console.error('Failed to check cookie status:', error);
-    }
-}
-
-async function saveCookie(e) {
-    e.preventDefault();
-    const cookie = document.getElementById('cookie-input').value;
-
-    try {
-        const response = await fetch('/api/cookie', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ cookie })
-        });
-        const data = await response.json();
-        if (data.success) {
-            hideCookieModal();
-            alert('Cookie 保存成功');
-        } else {
-            alert('保存失败');
-        }
-    } catch (error) {
-        console.error('Failed to save cookie:', error);
         alert('保存失败');
     }
 }

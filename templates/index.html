@@ -18,7 +18,6 @@
                 </div>
                 <button class="btn-download" id="download-btn">📥 下载更新</button>
                 <button class="btn-config" id="config-btn">⚙️ 管理文档</button>
-                <button class="btn-config" id="cookie-btn">🍪 Cookie配置</button>
             </div>
         </div>
     </header>
@@ -213,37 +212,6 @@
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="config-close-btn">关闭</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Cookie 配置弹窗 -->
-    <div class="modal" id="cookie-modal">
-        <div class="modal-content">
-            <h3>Cookie 配置</h3>
-            <div class="cookie-status" id="cookie-status">
-                <span class="status-label">状态:</span>
-                <span class="status-value" id="cookie-status-value">检查中...</span>
-            </div>
-            <form id="cookie-form">
-                <div class="form-group">
-                    <label>Cookie</label>
-                    <textarea id="cookie-input" rows="6" placeholder="粘贴 OneBox Cookie..."></textarea>
-                </div>
-                <div class="cookie-hint">
-                    <p><strong>获取方法:</strong></p>
-                    <ol>
-                        <li>登录 OneBox 网站</li>
-                        <li>按 F12 打开开发者工具</li>
-                        <li>切换到 Network（网络）标签</li>
-                        <li>访问任意 OneBox 页面</li>
-                        <li>找到请求，复制 Request Headers 中的 Cookie 值</li>
-                    </ol>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary">保存</button>
-                    <button type="button" class="btn-secondary" id="cookie-cancel-btn">取消</button>
-                </div>
-            </form>
         </div>
     </div>
 

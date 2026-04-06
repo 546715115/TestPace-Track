@@ -197,6 +197,23 @@ class DataFetcher:
             print(f"Download error: {e}")
             return False
 
+    def _get_available_path(self, save_path: str) -> str:
+        """获取可用的文件路径，如果文件已存在则添加 (1), (2) 等后缀"""
+        if not os.path.exists(save_path):
+            return save_path
+
+        dir_name = os.path.dirname(save_path)
+        base_name = os.path.basename(save_path)
+        name, ext = os.path.splitext(base_name)
+
+        counter = 1
+        while True:
+            new_filename = f"{name} ({counter}){ext}"
+            new_path = os.path.join(dir_name, new_filename)
+            if not os.path.exists(new_path):
+                return new_path
+            counter += 1
+
     def download_from_url(self, download_url: str, version_name: str, cache_dir: str) -> Optional[str]:
         """
         直接从下载链接下载 Excel 到缓存
@@ -206,6 +223,10 @@ class DataFetcher:
         date_str = datetime.now().strftime('%Y%m%d')
         filename = f"{version_name}_{date_str}.xlsx"
         save_path = os.path.join(cache_dir, filename)
+
+        # 处理重名文件
+        save_path = self._get_available_path(save_path)
+        print(f"Save path: {save_path}")
 
         try:
             print(f"\n=== Downloading from URL ===")
@@ -244,6 +265,9 @@ class DataFetcher:
         date_str = datetime.now().strftime('%Y%m%d')
         filename = f"{version_name}_{date_str}.xlsx"
         save_path = os.path.join(cache_dir, filename)
+
+        # 处理重名文件
+        save_path = self._get_available_path(save_path)
 
         if self.download_excel(bucket_path, doc_id, save_path):
             return save_path

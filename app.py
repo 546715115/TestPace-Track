@@ -47,22 +47,6 @@ def save_config_documents(config):
         json.dump(config, f, ensure_ascii=False, indent=2)
 
 
-def get_cookie_config():
-    """加载Cookie配置"""
-    cookie_path = os.path.join(os.path.dirname(__file__), 'config', 'cookies.json')
-    if os.path.exists(cookie_path):
-        with open(cookie_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {"cookie": ""}
-
-
-def save_cookie_config(cookie):
-    """保存Cookie配置"""
-    cookie_path = os.path.join(os.path.dirname(__file__), 'config', 'cookies.json')
-    with open(cookie_path, 'w', encoding='utf-8') as f:
-        json.dump({"cookie": cookie}, f, ensure_ascii=False, indent=2)
-
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -139,25 +123,6 @@ def delete_document(version_id):
             return jsonify({'success': True})
 
     return jsonify({'success': False, 'error': 'Document not found'})
-
-
-# ============ Cookie 配置 API ============
-
-@app.route('/api/cookie', methods=['GET'])
-def get_cookie():
-    """获取Cookie配置状态"""
-    config = get_cookie_config()
-    has_cookie = bool(config.get('cookie', '').strip())
-    return jsonify({'success': True, 'data': {'configured': has_cookie}})
-
-
-@app.route('/api/cookie', methods=['POST'])
-def save_cookie():
-    """保存Cookie配置"""
-    data = request.json
-    cookie = data.get('cookie', '')
-    save_cookie_config(cookie)
-    return jsonify({'success': True})
 
 
 # ============ Sheet 和数据 API ============
