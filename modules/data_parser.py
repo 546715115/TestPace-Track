@@ -78,26 +78,42 @@ def parse_date(value) -> str:
 
     val = str(value).strip()
 
+    # 检查是否包含日期分隔符，如果完全没有则直接返回原值
+    if '/' not in val and '.' not in val:
+        return str(value)
+
     # 已是目标格式
     if re.match(r'\d{4}/\d{1,2}/\d{1,2}', val):
         parts = val.split('/')
-        return f"{int(parts[0]):04d}/{int(parts[1]):02d}/{int(parts[2]):02d}"
+        try:
+            return f"{int(parts[0]):04d}/{int(parts[1]):02d}/{int(parts[2]):02d}"
+        except ValueError:
+            return str(value)
 
     # 点分隔符
     if re.match(r'\d{4}\.\d{1,2}\.\d{1,2}', val):
         parts = val.split('.')
-        return f"{int(parts[0]):04d}/{int(parts[1]):02d}/{int(parts[2]):02d}"
+        try:
+            return f"{int(parts[0]):04d}/{int(parts[1]):02d}/{int(parts[2]):02d}"
+        except ValueError:
+            return str(value)
 
     # 短格式（假设当前年份）
     if re.match(r'\d{1,2}/\d{1,2}', val):
         parts = val.split('/')
-        year = datetime.now().year
-        return f"{year}/{int(parts[0]):02d}/{int(parts[1]):02d}"
+        try:
+            year = datetime.now().year
+            return f"{year}/{int(parts[0]):02d}/{int(parts[1]):02d}"
+        except ValueError:
+            return str(value)
 
     if re.match(r'\d{1,2}\.\d{1,2}', val):
         parts = val.split('.')
-        year = datetime.now().year
-        return f"{year}/{int(parts[0]):02d}/{int(parts[1]):02d}"
+        try:
+            year = datetime.now().year
+            return f"{year}/{int(parts[0]):02d}/{int(parts[1]):02d}"
+        except ValueError:
+            return str(value)
 
     return str(value)
 
