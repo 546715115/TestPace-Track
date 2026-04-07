@@ -570,7 +570,7 @@ async function showEmptyFieldsModal() {
     }
 
     try {
-        const response = await fetch(`/api/empty_fields?version_id=${currentVersion}`);
+        const response = await fetch(`/api/empty_fields?version_id=${currentVersion}&sheet_name=${encodeURIComponent(currentSheet)}`);
         const data = await response.json();
 
         if (data.success) {

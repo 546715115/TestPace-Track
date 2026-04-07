@@ -440,6 +440,8 @@ def load_sheet():
 def get_empty_fields():
     """获取空白字段统计"""
     version_id = request.args.get('version_id')
+    sheet_name = request.args.get('sheet_name')  # 可选，默认用第一个sheet
+
     if not version_id:
         return jsonify({'success': False, 'error': 'version_id required'})
 
@@ -454,8 +456,12 @@ def get_empty_fields():
         print(f'[{now_str()}] [模块:空白字段统计] 失败: 没有sheet')
         return jsonify({'success': False, 'error': 'No sheets found'})
 
-    print(f'[{now_str()}] [模块:空白字段统计] 使用sheet: {sheets[0]}')
-    reader.load_sheet(sheets[0])
+    # 如果没有指定sheet，使用第一个；如果指定了但不存在，也用第一个
+    if not sheet_name or sheet_name not in sheets:
+        sheet_name = sheets[0]
+
+    print(f'[{now_str()}] [模块:空白字段统计] 使用sheet: {sheet_name}')
+    reader.load_sheet(sheet_name)
     groups = reader.get_requirement_groups()
     merged_reqs = [reader.merge_group(g) for g in groups]
     print(f'[{now_str()}] [模块:空白字段统计] merged_reqs数量: {len(merged_reqs)}')
