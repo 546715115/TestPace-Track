@@ -153,26 +153,25 @@ async function loadData() {
         });
 
         const data = await response.json();
-        console.log('[DEBUG loadData] 收到响应:', data);
+        console.log('[前端:数据接收] 收到响应, success=' + data.success);
         if (data.success) {
             allRequirements = data.data.requirements;
             allGroups = data.data.groups;
             allStats = data.data.stats || {};
 
-            console.log('[DEBUG loadData] allRequirements 数量:', allRequirements.length);
-            console.log('[DEBUG loadData] allGroups 数量:', allGroups.length);
-            console.log('[DEBUG loadData] allStats:', allStats);
+            console.log('[前端:数据接收] 数据行数=' + allRequirements.length + ', 组数=' + allGroups.length);
+            console.log('[前端:数据接收] 统计=' + JSON.stringify(allStats));
 
             // 构建合并后的实际需求（用于统计）
             mergedRequirements = allRequirements.filter(r => r._is_first_in_group);
-            console.log('[DEBUG loadData] mergedRequirements 数量:', mergedRequirements.length);
+            console.log('[前端:数据接收] 合并后需求数=' + mergedRequirements.length);
 
             renderStats();
             renderRiskCards();
             populateTesterFilter();
             renderTable(allRequirements);
         } else {
-            console.error('[DEBUG loadData] 请求失败:', data.error);
+            console.error('[前端:数据接收] 失败:', data.error);
         }
     } catch (error) {
         console.error('Failed to load data:', error);
@@ -1201,20 +1200,19 @@ async function loadDataFromCache(filename, sheetName) {
         });
 
         const data = await response.json();
-        console.log('[DEBUG loadDataFromCache] 收到响应:', data);
+        console.log('[前端:缓存加载] 收到响应, success=' + data.success);
         if (data.success) {
             allRequirements = data.data.requirements;
             allGroups = data.data.groups;
             allStats = data.data.stats || {};
 
-            console.log('[DEBUG loadDataFromCache] allRequirements 数量:', allRequirements.length);
-            console.log('[DEBUG loadDataFromCache] allGroups 数量:', allGroups.length);
-            console.log('[DEBUG loadDataFromCache] allStats:', allStats);
+            console.log('[前端:缓存加载] 数据行数=' + allRequirements.length + ', 组数=' + allGroups.length);
+            console.log('[前端:缓存加载] 统计=' + JSON.stringify(allStats));
 
             mergedRequirements = allRequirements.filter(r => r._is_first_in_group);
             groups = allGroups;
 
-            console.log('[DEBUG loadDataFromCache] mergedRequirements 数量:', mergedRequirements.length);
+            console.log('[前端:缓存加载] 合并后需求数=' + mergedRequirements.length);
 
             renderStats();
             renderRiskCards();

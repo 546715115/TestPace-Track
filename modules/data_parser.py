@@ -311,7 +311,7 @@ class ExcelReader:
         headers = self.get_headers(self.current_sheet)
         groups = self.get_requirement_groups()
 
-        print(f'[DEBUG get_raw_rows] Sheet: {self.current_sheet}, ws.max_row: {ws.max_row}, headers count: {len(headers)}, groups count: {len(groups)}')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:Excel解析] Sheet={self.current_sheet}, Excel总行={ws.max_row}, 列数={len(headers)}, 合并组={len(groups)}')
 
         # 构建 group -> 第一行数据的映射（用于复制合并单元格的值）
         group_first_row_data = {}

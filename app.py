@@ -4,6 +4,7 @@ TestPace-Track Flask 后端
 """
 import os
 import json
+from datetime import datetime
 from flask import Flask, jsonify, request, render_template
 
 from modules.db_manager import init_db
@@ -17,6 +18,11 @@ app = Flask(__name__)
 
 # 初始化数据库
 init_db()
+
+
+def now_str():
+    """返回当前时间字符串用于日志"""
+    return datetime.now().strftime('%H:%M:%S')
 
 
 def get_cache_file(version_id: str) -> str:
@@ -206,7 +212,7 @@ def load_sheet_from_cache():
     filename = data.get('filename')
     sheet_name = data.get('sheet_name')
 
-    print(f'[DEBUG] load_sheet_from_cache 请求: filename={filename}, sheet_name={sheet_name}')
+    print(f'[{now_str()}] [模块:缓存加载] 请求: filename={filename}, sheet={sheet_name}')
 
     if not filename or not sheet_name:
         return jsonify({'success': False, 'error': 'filename and sheet_name required'})
@@ -215,25 +221,24 @@ def load_sheet_from_cache():
     file_path = os.path.join(cache_dir, filename)
 
     if not os.path.exists(file_path):
-        print(f'[DEBUG] 文件不存在: {file_path}')
+        print(f'[{now_str()}] [模块:缓存加载] 失败: 文件不存在 - {file_path}')
         return jsonify({'success': False, 'error': 'Cache file not found'})
 
-    print(f'[DEBUG] 开始解析 Excel: {file_path}')
+    print(f'[{now_str()}] [模块:Excel解析] 开始解析: {file_path}')
     reader = ExcelReader(file_path)
     reader.load_sheet(sheet_name)
 
     raw_rows, groups = reader.get_raw_rows()
-    print(f'[DEBUG] get_raw_rows 返回: {len(raw_rows)} 行, {len(groups)} 组')
+    print(f'[{now_str()}] [模块:Excel解析] 完成: Excel行数={len(raw_rows)}, 合并组数={len(groups)}')
 
     # 计算风险
+    print(f'[{now_str()}] [模块:风险分析] 开始分析 {len(raw_rows)} 条需求...')
     merged_reqs = [reader.merge_group(g) for g in groups]
-    print(f'[DEBUG] merged_reqs 数量: {len(merged_reqs)}')
 
     # 从文件名解析 version_id
     import re
     match = re.match(r'^(.+?)_(\d{8})', filename)
     version_id = match.group(1) if match else filename
-    print(f'[DEBUG] 解析 version_id: {version_id}')
     version_plans = VersionManager().get_version_plans(version_id)
     analyzer = RiskAnalyzer(version_plans)
 
@@ -254,9 +259,14 @@ def load_sheet_from_cache():
             r[PROGRESS_FIELD] = min_progress
             r['测试进度'] = min_progress  # 兼容前端
 
+    print(f'[{now_str()}] [模块:风险分析] 完成')
+
+    print(f'[{now_str()}] [模块:统计计算] 开始计算...')
     stats_calc = StatsCalculator(merged_reqs)
     stats = stats_calc.calculate_with_groups(groups)
+    print(f'[{now_str()}] [模块:统计计算] 完成: 实际需求={stats.get("actual_requirement_count")}, 全部需求={stats.get("total_row_count")}')
 
+    print(f'[{now_str()}] [模块:缓存加载] 成功返回: {len(raw_rows)} 行')
     return jsonify({
         'success': True,
         'data': {
@@ -364,27 +374,27 @@ def load_sheet():
     version_id = data.get('version_id')
     sheet_name = data.get('sheet_name')
 
-    print(f'[DEBUG] load_sheet 请求: version_id={version_id}, sheet_name={sheet_name}')
+    print(f'[{now_str()}] [模块:数据加载] 请求: version_id={version_id}, sheet={sheet_name}')
 
     if not version_id or not sheet_name:
         return jsonify({'success': False, 'error': 'version_id and sheet_name required'})
 
     cache_file = get_cache_file(version_id)
-    print(f'[DEBUG] cache_file: {cache_file}')
     if not cache_file or not os.path.exists(cache_file):
-        print(f'[DEBUG] 缓存文件不存在: {cache_file}')
+        print(f'[{now_str()}] [模块:数据加载] 失败: 缓存文件不存在 - {cache_file}')
         return jsonify({'success': False, 'error': 'No cache found'})
 
+    print(f'[{now_str()}] [模块:Excel解析] 开始解析: {cache_file}')
     reader = ExcelReader(cache_file)
     reader.load_sheet(sheet_name)
 
     # 获取原始所有行（用于前端rowspan合并显示）
     raw_rows, groups = reader.get_raw_rows()
-    print(f'[DEBUG] get_raw_rows 返回: {len(raw_rows)} 行, {len(groups)} 组')
+    print(f'[{now_str()}] [模块:Excel解析] 完成: Excel行数={len(raw_rows)}, 合并组数={len(groups)}')
 
     # 计算风险：先对每个原始行分别分析，再去重合并
+    print(f'[{now_str()}] [模块:风险分析] 开始分析 {len(raw_rows)} 条需求...')
     merged_reqs = [reader.merge_group(g) for g in groups]
-    print(f'[DEBUG] merged_reqs 数量: {len(merged_reqs)}')
     version_plans = VersionManager().get_version_plans(version_id)
     analyzer = RiskAnalyzer(version_plans)
 
@@ -395,24 +405,27 @@ def load_sheet():
     # 对每个组内的风险去重合并，并同步最小进度
     for idx, merged_req in enumerate(merged_reqs):
         group_rows = [r for r in raw_rows if r['_group_idx'] == idx]
-        # 合并所有风险并去重，过滤掉None值
         all_risks = set()
         for r in group_rows:
             risks = r.get('risks', []) or []
             for risk in risks:
                 if risk is not None:
                     all_risks.add(risk)
-        # 同步去重后的风险和最小进度到所有行
         min_progress = get_progress(merged_req)
         for r in group_rows:
             r['risks'] = sorted([x for x in all_risks if x is not None])
             r[PROGRESS_FIELD] = min_progress
             r['测试进度'] = min_progress  # 兼容前端
 
+    print(f'[{now_str()}] [模块:风险分析] 完成')
+
     # 计算统计
+    print(f'[{now_str()}] [模块:统计计算] 开始计算...')
     stats_calc = StatsCalculator(merged_reqs)
     stats = stats_calc.calculate_with_groups(groups)
+    print(f'[{now_str()}] [模块:统计计算] 完成: 实际需求={stats.get("actual_requirement_count")}, 全部需求={stats.get("total_row_count")}')
 
+    print(f'[{now_str()}] [模块:数据加载] 成功返回: {len(raw_rows)} 行')
     return jsonify({
         'success': True,
         'data': {
