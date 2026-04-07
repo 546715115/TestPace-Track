@@ -874,7 +874,7 @@ function renderTable(requirements) {
         ).join('');
 
         const detailLink = req['需求编号']
-            ? `<a href="https://clouddevops.huawei.com/workitem/+${req['需求编号']}" target="_blank">详情</a>`
+            ? `<a href="https://clouddevops.huawei.com/workitem/${req['需求编号']}" target="_blank">详情</a>`
             : '';
 
         const progress = req['测试进度'] || 0;
@@ -886,16 +886,12 @@ function renderTable(requirements) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         };
 
-        // 非第一行：rowspan已覆盖的列（特性分类、测试人员、测试进度、风险）留空，只输出per-row列
+        // 非第一行：已有rowspan覆盖的列不需要输出，只输出per-row列（业务团队、需求编号、需求描述、操作）
         if (!req._is_first_in_group) {
             html += `<tr>
-                <td></td>
                 <td>${escapeHtml(req['业务团队'])}</td>
                 <td>${escapeHtml(req['需求编号'])}</td>
                 <td class="desc-cell" title="${escapeHtml(req['需求描述'])}">${escapeHtml(req['需求描述'])}</td>
-                <td></td>
-                <td></td>
-                <td></td>
                 <td>${detailLink}</td>
             </tr>`;
             continue;
