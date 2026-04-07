@@ -153,18 +153,26 @@ async function loadData() {
         });
 
         const data = await response.json();
+        console.log('[DEBUG loadData] 收到响应:', data);
         if (data.success) {
             allRequirements = data.data.requirements;
             allGroups = data.data.groups;
             allStats = data.data.stats || {};
 
+            console.log('[DEBUG loadData] allRequirements 数量:', allRequirements.length);
+            console.log('[DEBUG loadData] allGroups 数量:', allGroups.length);
+            console.log('[DEBUG loadData] allStats:', allStats);
+
             // 构建合并后的实际需求（用于统计）
             mergedRequirements = allRequirements.filter(r => r._is_first_in_group);
+            console.log('[DEBUG loadData] mergedRequirements 数量:', mergedRequirements.length);
 
             renderStats();
             renderRiskCards();
             populateTesterFilter();
             renderTable(allRequirements);
+        } else {
+            console.error('[DEBUG loadData] 请求失败:', data.error);
         }
     } catch (error) {
         console.error('Failed to load data:', error);
@@ -879,12 +887,16 @@ function renderTable(requirements) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         };
 
-        // 非第一行：已有rowspan覆盖的列不需要再输出，只输出per-row列（业务团队、需求编号、需求描述）和操作列
+        // 非第一行：rowspan已覆盖的列（特性分类、测试人员、测试进度、风险）留空，只输出per-row列
         if (!req._is_first_in_group) {
             html += `<tr>
+                <td></td>
                 <td>${escapeHtml(req['业务团队'])}</td>
                 <td>${escapeHtml(req['需求编号'])}</td>
                 <td class="desc-cell" title="${escapeHtml(req['需求描述'])}">${escapeHtml(req['需求描述'])}</td>
+                <td></td>
+                <td></td>
+                <td></td>
                 <td>${detailLink}</td>
             </tr>`;
             continue;
@@ -1189,13 +1201,20 @@ async function loadDataFromCache(filename, sheetName) {
         });
 
         const data = await response.json();
+        console.log('[DEBUG loadDataFromCache] 收到响应:', data);
         if (data.success) {
             allRequirements = data.data.requirements;
             allGroups = data.data.groups;
             allStats = data.data.stats || {};
 
+            console.log('[DEBUG loadDataFromCache] allRequirements 数量:', allRequirements.length);
+            console.log('[DEBUG loadDataFromCache] allGroups 数量:', allGroups.length);
+            console.log('[DEBUG loadDataFromCache] allStats:', allStats);
+
             mergedRequirements = allRequirements.filter(r => r._is_first_in_group);
             groups = allGroups;
+
+            console.log('[DEBUG loadDataFromCache] mergedRequirements 数量:', mergedRequirements.length);
 
             renderStats();
             renderRiskCards();

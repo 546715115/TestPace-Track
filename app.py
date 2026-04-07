@@ -206,6 +206,8 @@ def load_sheet_from_cache():
     filename = data.get('filename')
     sheet_name = data.get('sheet_name')
 
+    print(f'[DEBUG] load_sheet_from_cache 请求: filename={filename}, sheet_name={sheet_name}')
+
     if not filename or not sheet_name:
         return jsonify({'success': False, 'error': 'filename and sheet_name required'})
 
@@ -213,19 +215,25 @@ def load_sheet_from_cache():
     file_path = os.path.join(cache_dir, filename)
 
     if not os.path.exists(file_path):
+        print(f'[DEBUG] 文件不存在: {file_path}')
         return jsonify({'success': False, 'error': 'Cache file not found'})
 
+    print(f'[DEBUG] 开始解析 Excel: {file_path}')
     reader = ExcelReader(file_path)
     reader.load_sheet(sheet_name)
 
     raw_rows, groups = reader.get_raw_rows()
+    print(f'[DEBUG] get_raw_rows 返回: {len(raw_rows)} 行, {len(groups)} 组')
 
     # 计算风险
     merged_reqs = [reader.merge_group(g) for g in groups]
+    print(f'[DEBUG] merged_reqs 数量: {len(merged_reqs)}')
+
     # 从文件名解析 version_id
     import re
     match = re.match(r'^(.+?)_(\d{8})', filename)
     version_id = match.group(1) if match else filename
+    print(f'[DEBUG] 解析 version_id: {version_id}')
     version_plans = VersionManager().get_version_plans(version_id)
     analyzer = RiskAnalyzer(version_plans)
 
@@ -356,11 +364,15 @@ def load_sheet():
     version_id = data.get('version_id')
     sheet_name = data.get('sheet_name')
 
+    print(f'[DEBUG] load_sheet 请求: version_id={version_id}, sheet_name={sheet_name}')
+
     if not version_id or not sheet_name:
         return jsonify({'success': False, 'error': 'version_id and sheet_name required'})
 
     cache_file = get_cache_file(version_id)
+    print(f'[DEBUG] cache_file: {cache_file}')
     if not cache_file or not os.path.exists(cache_file):
+        print(f'[DEBUG] 缓存文件不存在: {cache_file}')
         return jsonify({'success': False, 'error': 'No cache found'})
 
     reader = ExcelReader(cache_file)
@@ -368,9 +380,11 @@ def load_sheet():
 
     # 获取原始所有行（用于前端rowspan合并显示）
     raw_rows, groups = reader.get_raw_rows()
+    print(f'[DEBUG] get_raw_rows 返回: {len(raw_rows)} 行, {len(groups)} 组')
 
     # 计算风险：先对每个原始行分别分析，再去重合并
     merged_reqs = [reader.merge_group(g) for g in groups]
+    print(f'[DEBUG] merged_reqs 数量: {len(merged_reqs)}')
     version_plans = VersionManager().get_version_plans(version_id)
     analyzer = RiskAnalyzer(version_plans)
 

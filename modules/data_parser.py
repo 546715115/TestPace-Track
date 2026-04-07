@@ -295,6 +295,8 @@ class ExcelReader:
         headers = self.get_headers(self.current_sheet)
         groups = self.get_requirement_groups()
 
+        print(f'[DEBUG get_raw_rows] Sheet: {self.current_sheet}, ws.max_row: {ws.max_row}, headers count: {len(headers)}, groups count: {len(groups)}')
+
         # 构建 group -> 第一行数据的映射（用于复制合并单元格的值）
         group_first_row_data = {}
         for idx, group in enumerate(groups):
