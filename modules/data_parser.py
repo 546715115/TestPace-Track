@@ -12,6 +12,64 @@ YES_NO_FIELDS = {'是否变更接口', '是否涉及资料', '是否涉及性能
 PERSONNEL_FIELDS = {'测试人员', '开发人员', 'TSE', '业务团队'}
 DATE_FIELDS = {'计划转测时间', '资料转测时间', '需求串讲/设计完成日期'}
 
+# 进度列名（兼容旧版和新版Excel）
+PROGRESS_FIELD = '测试进度（%）'
+PROGRESS_FIELD_ALT = '测试进度'
+
+
+def get_progress(row: Dict) -> Any:
+    """获取进度值，兼容新旧列名"""
+    return row.get(PROGRESS_FIELD) or row.get(PROGRESS_FIELD_ALT) or 0
+
+
+def fix_encoding(value):
+    """修复 Excel 读取时的编码问题
+
+    Excel 文件使用 GBK/CP936 编码保存字符串，但 openpyxl 的 sharedStrings.xml
+    读取时默认按 UTF-8 解码，导致 GBK 字节被误解析为 UTF-8 产生乱码。
+
+    只对字符串值进行编码修复，非字符串值（int、float、bool）保持原样返回。
+    """
+    # 非字符串值保持原样（不包括 _row_span 等元数据）
+    if value is None:
+        return ''
+    if isinstance(value, (int, float, bool)):
+        return value
+    if not isinstance(value, str):
+        return value
+
+    # 如果字符串已经是正确的汉字，直接返回
+    if re.search(r'[\u4e00-\u9fff]', value):
+        return value
+
+    # 如果字符串是纯 ASCII（不包含可能出问题的字节），直接返回
+    try:
+        value.encode('ascii')
+        return value
+    except UnicodeEncodeError:
+        pass
+
+    # 检测是否包含 UTF-8 高位延续字节的不当序列
+    # 0x80-0xBF 是 UTF-8 的延续字节，如果出现在字符串中说明可能被误读了
+    # 通过检查是否包含非 ASCII 高位字符（而不是标准 UTF-8 合法字符）来判断
+    try:
+        # 尝试用 GBK 解码
+        # 先把字符串当作 ISO-8859-1 编码的字节串（保留原始字节），再用 GBK 解码
+        byte_data = value.encode('iso-8859-1', errors='ignore')
+        decoded = byte_data.decode('gbk', errors='ignore')
+        # 检查解码后是否包含正确的汉字，如果包含说明原来是 GBK 编码
+        if re.search(r'[\u4e00-\u9fff]', decoded):
+            return decoded
+    except:
+        pass
+
+    return value
+
+
+def fix_row_encoding(row: Dict) -> Dict:
+    """修复一行数据的编码问题"""
+    return {k: fix_encoding(v) for k, v in row.items()}
+
 
 def parse_date(value) -> str:
     """解析多种日期格式，统一为 YYYY/MM/DD"""
@@ -133,7 +191,7 @@ class ExcelReader:
 
     def get_headers(self, sheet_name: str) -> List[str]:
         ws = self.workbook[sheet_name]
-        return [cell.value for cell in ws[1]]
+        return [fix_encoding(cell.value) for cell in ws[1]]
 
     def load_sheet(self, sheet_name: str):
         self.current_sheet = sheet_name
@@ -198,7 +256,7 @@ class ExcelReader:
 
             for row_idx in group['rows']:
                 cell = ws.cell(row=row_idx, column=col_idx)
-                values.append(cell.value)
+                values.append(fix_encoding(cell.value))
 
             # 根据字段类型应用合并逻辑
             if header in YES_NO_FIELDS:
@@ -282,7 +340,7 @@ class ExcelReader:
                 row_data['_is_merged'] = False
                 row_data['_row_span'] = 1
 
-            raw_rows.append(row_data)
+            raw_rows.append(fix_row_encoding(row_data))
 
         return raw_rows, groups
 

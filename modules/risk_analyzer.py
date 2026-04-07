@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import List, Dict, Any
 
-from modules.data_parser import normalize_progress
+from modules.data_parser import normalize_progress, get_progress
 
 
 class RiskAnalyzer:
@@ -47,7 +47,7 @@ class RiskAnalyzer:
         if '需求测试完成' in self.version_plans:
             plan = self.version_plans['需求测试完成']
             if self._is_overdue(plan['target_date'], current_date):
-                progress = normalize_progress(req.get('测试进度', 0))
+                progress = normalize_progress(get_progress(req))
                 if progress < 100:
                     risks.append('test_progress_delayed')
 
@@ -67,12 +67,16 @@ class RiskAnalyzer:
     def _check_empty_fields(self, req: Dict, required_fields: List[str] = None) -> List[str]:
         """检查必填字段是否为空"""
         if required_fields is None:
-            required_fields = ['测试人员', '计划转测时间', '测试进度']
+            required_fields = ['测试人员', '计划转测时间', '测试进度（%）']
 
         empty = []
         for field in required_fields:
             value = req.get(field)
             if not value or str(value).strip() == '':
+                # 进度字段特殊处理：兼容新旧列名
+                if field == '测试进度（%）':
+                    if req.get('测试进度') or str(req.get('测试进度', '')).strip():
+                        continue  # 旧列名有值，不算空
                 empty.append(field)
         return empty
 

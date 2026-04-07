@@ -51,6 +51,11 @@ body {
     align-items: center;
 }
 
+.version-selector {
+    display: flex;
+    gap: 8px;
+}
+
 .version-selector select {
     padding: 8px 16px;
     border-radius: 8px;
@@ -74,6 +79,80 @@ body {
 
 .btn-config:hover {
     background: rgba(255,255,255,0.1);
+}
+
+.btn-cache {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    font-size: 14px;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-cache:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Cache Table */
+.cache-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.cache-table th,
+.cache-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.cache-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+}
+
+.cache-table tr:hover {
+    background: #fafafa;
+}
+
+.btn-small {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-small.btn-primary,
+.btn-small.btn-danger {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 4px;
 }
 
 /* Main */

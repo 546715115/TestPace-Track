@@ -4,7 +4,7 @@
 """
 from typing import List, Dict
 
-from modules.data_parser import normalize_progress
+from modules.data_parser import normalize_progress, get_progress
 
 
 # 需要检查空白字段的列（排除业务团队、需求编号、需求描述、开发人员、测试人员）
@@ -13,7 +13,7 @@ EMPTY_FIELD_COLUMNS = [
     '反串讲进度（%）',
     '用例数',
     '计划转测时间',
-    '测试进度',
+    '测试进度（%）',
     '自验质量（自验pass，测试fail）',
     '问题单数量',
     '是否变更接口',
@@ -43,7 +43,7 @@ class StatsCalculator:
         }
 
         for req in self.requirements:
-            progress = normalize_progress(req.get('测试进度', 0))
+            progress = normalize_progress(get_progress(req))
 
             if progress >= 100:
                 stats['completed_count'] += 1

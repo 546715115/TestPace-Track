@@ -15,8 +15,12 @@
                     <select id="version-select">
                         <option value="">选择版本</option>
                     </select>
+                    <select id="sheet-select">
+                        <option value="">选择Sheet</option>
+                    </select>
                 </div>
                 <button class="btn-download" id="download-btn">📥 下载更新</button>
+                <button class="btn-config" id="cache-btn">📁 管理缓存</button>
                 <button class="btn-config" id="config-btn">⚙️ 管理文档</button>
             </div>
         </div>
@@ -105,9 +109,6 @@
 
         <!-- 过滤栏 -->
         <section class="filter-bar">
-            <select id="sheet-select">
-                <option value="">选择Sheet</option>
-            </select>
             <select id="tester-filter">
                 <option value="">全部测试人员</option>
             </select>
@@ -211,6 +212,17 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="config-close-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 缓存管理弹窗 -->
+    <div class="modal" id="cache-modal">
+        <div class="modal-content modal-wide">
+            <h3>管理缓存</h3>
+            <div class="cache-list" id="cache-list"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="cache-close-btn">关闭</button>
             </div>
         </div>
     </div>

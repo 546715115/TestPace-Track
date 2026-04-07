@@ -31,6 +31,8 @@ function setupEventListeners() {
     document.getElementById('config-close-btn').addEventListener('click', hideConfigModal);
     document.getElementById('config-cancel-btn').addEventListener('click', resetConfigForm);
     document.getElementById('config-form').addEventListener('submit', saveDocumentConfig);
+    document.getElementById('cache-btn').addEventListener('click', showCacheModal);
+    document.getElementById('cache-close-btn').addEventListener('click', hideCacheModal);
     document.getElementById('empty-fields-close-btn').addEventListener('click', hideEmptyFieldsModal);
     document.getElementById('risk-detail-close-btn').addEventListener('click', hideRiskDetailModal);
     document.getElementById('risk-detail-tester-filter').addEventListener('change', filterRiskDetailByTester);
@@ -877,9 +879,14 @@ function renderTable(requirements) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         };
 
-        // 非第一行：只输出per-row列，不需要为空单元格占位
+        // 非第一行：已有rowspan覆盖的列不需要再输出，只输出per-row列（业务团队、需求编号、需求描述）和操作列
         if (!req._is_first_in_group) {
-            html += `<tr><td>${escapeHtml(req['业务团队'])}</td><td>${escapeHtml(req['需求编号'])}</td><td class="desc-cell" title="${escapeHtml(req['需求描述'])}">${escapeHtml(req['需求描述'])}</td><td>${detailLink}</td></tr>`;
+            html += `<tr>
+                <td>${escapeHtml(req['业务团队'])}</td>
+                <td>${escapeHtml(req['需求编号'])}</td>
+                <td class="desc-cell" title="${escapeHtml(req['需求描述'])}">${escapeHtml(req['需求描述'])}</td>
+                <td>${detailLink}</td>
+            </tr>`;
             continue;
         }
 
@@ -1076,6 +1083,154 @@ async function saveDocumentConfig(e) {
         console.error('Failed to save document:', error);
         alert('保存失败');
     }
+}
+
+// ============ 缓存管理 ============
+
+async function showCacheModal() {
+    await loadCacheList();
+    document.getElementById('cache-modal').classList.add('show');
+}
+
+function hideCacheModal() {
+    document.getElementById('cache-modal').classList.remove('show');
+}
+
+async function loadCacheList() {
+    try {
+        const response = await fetch('/api/caches');
+        const data = await response.json();
+        const listEl = document.getElementById('cache-list');
+
+        if (data.success && data.data.caches.length > 0) {
+            let html = '<table class="cache-table"><thead><tr><th>文档名称</th><th>下载日期</th><th>大小</th><th>操作</th></tr></thead><tbody>';
+            data.data.caches.forEach(cache => {
+                const sizeStr = formatFileSize(cache.size);
+                html += `<tr>
+                    <td>${escapeHtml(cache.name)}</td>
+                    <td>${cache.date}</td>
+                    <td>${sizeStr}</td>
+                    <td>
+                        <button class="btn-small btn-primary" onclick="loadCache('${escapeHtml(cache.filename)}')">加载</button>
+                        <button class="btn-small btn-danger" onclick="deleteCache('${escapeHtml(cache.filename)}')">删除</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            listEl.innerHTML = html;
+        } else {
+            listEl.innerHTML = '<p class="no-data">暂无缓存文件</p>';
+        }
+    } catch (error) {
+        console.error('Failed to load caches:', error);
+        document.getElementById('cache-list').innerHTML = '<p class="error">加载失败</p>';
+    }
+}
+
+async function deleteCache(filename) {
+    if (!confirm(`确定要删除缓存 "${filename}" 吗？`)) return;
+
+    try {
+        const response = await fetch(`/api/caches/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (data.success) {
+            await loadCacheList();
+        } else {
+            alert(data.error || '删除失败');
+        }
+    } catch (error) {
+        console.error('Failed to delete cache:', error);
+        alert('删除失败');
+    }
+}
+
+let currentCacheFile = null;  // 当前选中的缓存文件
+
+async function loadCache(filename) {
+    try {
+        // 保存当前选中的缓存文件
+        currentCacheFile = filename;
+
+        // 获取该缓存文件的 sheets
+        const response = await fetch(`/api/caches/${encodeURIComponent(filename)}/sheets`);
+        const data = await response.json();
+
+        if (data.success) {
+            currentSheets = data.data.sheets;
+            populateSheetSelect();
+
+            // 默认选择第一个 sheet
+            if (currentSheets.length > 0) {
+                currentSheet = currentSheets[0];
+                await loadDataFromCache(filename, currentSheet);
+            }
+
+            hideCacheModal();
+        } else {
+            alert(data.error || '加载失败');
+        }
+    } catch (error) {
+        console.error('Failed to load cache:', error);
+        alert('加载失败');
+    }
+}
+
+async function loadDataFromCache(filename, sheetName) {
+    try {
+        const response = await fetch('/api/load_sheet_from_cache', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                filename: filename,
+                sheet_name: sheetName
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            allRequirements = data.data.requirements;
+            allGroups = data.data.groups;
+            allStats = data.data.stats || {};
+
+            mergedRequirements = allRequirements.filter(r => r._is_first_in_group);
+            groups = allGroups;
+
+            renderStats();
+            renderRiskCards();
+            renderRequirements();
+            updateTesterFilter();
+        } else {
+            alert(data.error || '加载数据失败');
+        }
+    } catch (error) {
+        console.error('Failed to load data from cache:', error);
+        alert('加载数据失败');
+    }
+}
+
+function populateSheetSelect() {
+    const select = document.getElementById('sheet-select');
+    select.innerHTML = '<option value="">选择Sheet</option>';
+    currentSheets.forEach(sheet => {
+        const option = document.createElement('option');
+        option.value = sheet;
+        option.textContent = sheet;
+        select.appendChild(option);
+    });
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ============ 启动 ============

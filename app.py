@@ -8,7 +8,7 @@ from flask import Flask, jsonify, request, render_template
 
 from modules.db_manager import init_db
 from modules.version_manager import VersionManager
-from modules.data_parser import ExcelReader
+from modules.data_parser import ExcelReader, get_progress, PROGRESS_FIELD
 from modules.risk_analyzer import RiskAnalyzer
 from modules.stats_calculator import StatsCalculator, EMPTY_FIELD_COLUMNS
 from modules.data_fetcher import DataFetcher
@@ -125,6 +125,169 @@ def delete_document(version_id):
     return jsonify({'success': False, 'error': 'Document not found'})
 
 
+# ============ 缓存管理 API ============
+
+@app.route('/api/caches', methods=['GET'])
+def get_caches():
+    """获取所有缓存文件列表"""
+    cache_dir = os.path.join(os.path.dirname(__file__), 'data', 'cache')
+    if not os.path.exists(cache_dir):
+        return jsonify({'success': True, 'data': {'caches': []}})
+
+    caches = []
+    for filename in os.listdir(cache_dir):
+        if filename.endswith('.xlsx'):
+            file_path = os.path.join(cache_dir, filename)
+            # 解析文件名：名称_YYYYMMDD.xlsx 或 名称_YYYYMMDD (1).xlsx
+            import re
+            match = re.match(r'^(.+?)_(\d{8})(?:\s*\(\d+\))?\.xlsx$', filename)
+            if match:
+                name = match.group(1)
+                date_str = match.group(2)
+                # 格式化日期
+                formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+            else:
+                name = filename.replace('.xlsx', '')
+                formatted_date = '未知'
+
+            caches.append({
+                'filename': filename,
+                'name': name,
+                'date': formatted_date,
+                'size': os.path.getsize(file_path),
+                'path': file_path
+            })
+
+    # 按日期倒序排列
+    caches.sort(key=lambda x: x['date'], reverse=True)
+
+    return jsonify({'success': True, 'data': {'caches': caches}})
+
+
+@app.route('/api/caches/<filename>', methods=['DELETE'])
+def delete_cache(filename):
+    """删除指定缓存文件"""
+    cache_dir = os.path.join(os.path.dirname(__file__), 'data', 'cache')
+    file_path = os.path.join(cache_dir, filename)
+
+    # 安全检查：只允许删除 .xlsx 文件
+    if not filename.endswith('.xlsx') or '..' in filename or '/' in filename or '\\' in filename:
+        return jsonify({'success': False, 'error': 'Invalid filename'})
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'File not found'})
+
+
+@app.route('/api/caches/<filename>/sheets', methods=['GET'])
+def get_cache_sheets(filename):
+    """获取指定缓存文件的所有 Sheet 页"""
+    cache_dir = os.path.join(os.path.dirname(__file__), 'data', 'cache')
+    file_path = os.path.join(cache_dir, filename)
+
+    # 安全检查
+    if not filename.endswith('.xlsx') or '..' in filename or '/' in filename or '\\' in filename:
+        return jsonify({'success': False, 'error': 'Invalid filename'})
+
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'error': 'Cache file not found'})
+
+    reader = ExcelReader(file_path)
+    sheets = reader.get_sheet_names()
+    return jsonify({'success': True, 'data': {'sheets': sheets, 'filename': filename}})
+
+
+@app.route('/api/load_sheet_from_cache', methods=['POST'])
+def load_sheet_from_cache():
+    """从指定缓存文件加载 Sheet 数据"""
+    data = request.json
+    filename = data.get('filename')
+    sheet_name = data.get('sheet_name')
+
+    if not filename or not sheet_name:
+        return jsonify({'success': False, 'error': 'filename and sheet_name required'})
+
+    cache_dir = os.path.join(os.path.dirname(__file__), 'data', 'cache')
+    file_path = os.path.join(cache_dir, filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'error': 'Cache file not found'})
+
+    reader = ExcelReader(file_path)
+    reader.load_sheet(sheet_name)
+
+    raw_rows, groups = reader.get_raw_rows()
+
+    # 计算风险
+    merged_reqs = [reader.merge_group(g) for g in groups]
+    # 从文件名解析 version_id
+    import re
+    match = re.match(r'^(.+?)_(\d{8})', filename)
+    version_id = match.group(1) if match else filename
+    version_plans = VersionManager().get_version_plans(version_id)
+    analyzer = RiskAnalyzer(version_plans)
+
+    for raw_row in raw_rows:
+        raw_row['risks'] = analyzer.analyze_requirement(raw_row)
+
+    for idx, merged_req in enumerate(merged_reqs):
+        group_rows = [r for r in raw_rows if r['_group_idx'] == idx]
+        all_risks = set()
+        for r in group_rows:
+            risks = r.get('risks', []) or []
+            for risk in risks:
+                if risk is not None:
+                    all_risks.add(risk)
+        min_progress = get_progress(merged_req)
+        for r in group_rows:
+            r['risks'] = sorted([x for x in all_risks if x is not None])
+            r[PROGRESS_FIELD] = min_progress
+            r['测试进度'] = min_progress  # 兼容前端
+
+    stats_calc = StatsCalculator(merged_reqs)
+    stats = stats_calc.calculate_with_groups(groups)
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'requirements': raw_rows,
+            'groups': groups,
+            'stats': stats,
+            'filename': filename
+        }
+    })
+
+
+@app.route('/api/caches/cleanup', methods=['POST'])
+def cleanup_caches():
+    """清理旧缓存，保留最多100条"""
+    cache_dir = os.path.join(os.path.dirname(__file__), 'data', 'cache')
+    if not os.path.exists(cache_dir):
+        return jsonify({'success': True, 'deleted': 0})
+
+    files = []
+    for filename in os.listdir(cache_dir):
+        if filename.endswith('.xlsx'):
+            file_path = os.path.join(cache_dir, filename)
+            files.append((filename, os.path.getsize(file_path)))
+
+    # 按名称和日期排序（保留最新的）
+    files.sort(key=lambda x: x[0], reverse=True)
+
+    # 删除超过100条的旧文件
+    deleted = 0
+    if len(files) > 100:
+        files_to_delete = files[100:]
+        for filename, _ in files_to_delete:
+            file_path = os.path.join(cache_dir, filename)
+            os.remove(file_path)
+            deleted += 1
+
+    return jsonify({'success': True, 'deleted': deleted})
+
+
 # ============ Sheet 和数据 API ============
 
 @app.route('/api/sheets', methods=['GET'])
@@ -226,10 +389,11 @@ def load_sheet():
                 if risk is not None:
                     all_risks.add(risk)
         # 同步去重后的风险和最小进度到所有行
-        min_progress = merged_req.get('测试进度', 0)
+        min_progress = get_progress(merged_req)
         for r in group_rows:
             r['risks'] = sorted([x for x in all_risks if x is not None])
-            r['测试进度'] = min_progress
+            r[PROGRESS_FIELD] = min_progress
+            r['测试进度'] = min_progress  # 兼容前端
 
     # 计算统计
     stats_calc = StatsCalculator(merged_reqs)
