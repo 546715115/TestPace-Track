@@ -445,21 +445,25 @@ def get_empty_fields():
 
     cache_file = get_cache_file(version_id)
     if not cache_file or not os.path.exists(cache_file):
+        print(f'[{now_str()}] [模块:空白字段统计] 失败: 缓存文件不存在')
         return jsonify({'success': False, 'error': 'No cache found'})
 
     reader = ExcelReader(cache_file)
-    # 获取第一个sheet
     sheets = reader.get_sheet_names()
     if not sheets:
+        print(f'[{now_str()}] [模块:空白字段统计] 失败: 没有sheet')
         return jsonify({'success': False, 'error': 'No sheets found'})
 
+    print(f'[{now_str()}] [模块:空白字段统计] 使用sheet: {sheets[0]}')
     reader.load_sheet(sheets[0])
     groups = reader.get_requirement_groups()
     merged_reqs = [reader.merge_group(g) for g in groups]
+    print(f'[{now_str()}] [模块:空白字段统计] merged_reqs数量: {len(merged_reqs)}')
 
     # 计算空白字段统计
     stats_calc = StatsCalculator(merged_reqs)
     empty_stats = stats_calc.calculate_empty_fields_by_tester()
+    print(f'[{now_str()}] [模块:空白字段统计] 统计结果数量: {len(empty_stats)}')
 
     return jsonify({
         'success': True,

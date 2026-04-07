@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Table Test</title>
+<style>
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #333; padding: 8px; }
+.merged-cell { background: #e0e0e0; }
+.desc-cell { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<table>
+<thead>
+<tr>
+    <th>特性分类</th>
+    <th>业务团队</th>
+    <th>需求编号</th>
+    <th>需求描述</th>
+    <th>测试人员</th>
+    <th>测试进度</th>
+    <th>风险</th>
+    <th>操作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+    <td rowspan="4" class="merged-cell"></td>
+    <td>CES</td>
+    <td>FE2025123456789</td>
+    <td class="desc-cell">消息推送增加定时发送功能</td>
+    <td rowspan="4" class="merged-cell">测试B，测试c</td>
+    <td rowspan="4">7000%</td>
+    <td rowspan="4"></td>
+    <td><a href="#">详情</a></td>
+</tr>
+<tr>
+    <td></td>
+    <td>CES</td>
+    <td>FE9464851392045</td>
+    <td class="desc-cell">接口文档自动生成优化</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td><a href="#">详情</a></td>
+</tr>
+<tr>
+    <td></td>
+    <td>CES</td>
+    <td>FE3078712943668</td>
+    <td class="desc-cell">报表模块增加自定义筛选条件</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td><a href="#">详情</a></td>
+</tr>
+<tr>
+    <td></td>
+    <td>CES</td>
+    <td>FE3224745170423</td>
+    <td class="desc-cell">接口Mock服务搭建</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td><a href="#">详情</a></td>
+</tr>
+<tr>
+    <td class="merged-cell"></td>
+    <td>消息中心</td>
+    <td>FE7543708458769</td>
+    <td class="desc-cell">接口文档自动生成优化</td>
+    <td class="merged-cell">测试F</td>
+    <td>6000%</td>
+    <td></td>
+    <td><a href="#">详情</a></td>
+</tr>
+<tr>
+    <td class="merged-cell"></td>
+    <td>报表系统</td>
+    <td>FE3934625576778</td>
+    <td class="desc-cell">移动端适配优化，适配小屏设备</td>
+    <td class="merged-cell">测试A</td>
+    <td>100%</td>
+    <td></td>
+    <td><a href="#">详情</a></td>
+</tr>
+</tbody></table></body></html>
