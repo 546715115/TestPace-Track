@@ -468,6 +468,14 @@ main {
     font-size: 14px;
 }
 
+/* 特性分类列宽度缩小50%，给后面的列留出更多空间 */
+.requirements-table th:first-child,
+.requirements-table td:first-child {
+    width: 8%;
+    max-width: 8%;
+    min-width: 60px;
+}
+
 .requirements-table tbody tr:hover {
     background: #fafafa;
 }
