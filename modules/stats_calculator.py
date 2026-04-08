@@ -80,10 +80,15 @@ class StatsCalculator:
 
     def calculate_empty_fields_by_tester(self) -> List[Dict]:
         """按测试人员统计空白字段情况"""
+        from datetime import datetime
+
         # 按测试人员聚合
         tester_data = {}
 
-        for req in self.requirements:
+        # 调试日志：显示需要检查的列名和req中实际的列名
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:空白字段统计] 需要检查的列: {EMPTY_FIELD_COLUMNS}')
+
+        for idx, req in enumerate(self.requirements):
             # 获取测试人员（取第一个）
             tester = req.get('测试人员', '')
             if not tester:
@@ -102,6 +107,15 @@ class StatsCalculator:
                 }
 
             tester_data[tester]['requirement_count'] += 1
+
+            # 调试日志：显示每个需求在各列的值
+            debug_info = []
+            for col in EMPTY_FIELD_COLUMNS:
+                value = req.get(col)
+                is_empty = not value or str(value).strip() == ''
+                debug_info.append(f'{col}:{repr(value)[:20]}={is_empty}')
+
+            print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:空白字段统计] 需求{idx} 测试员={tester}: {debug_info}')
 
             # 检查每个需要统计的列是否为空
             for col in EMPTY_FIELD_COLUMNS:
