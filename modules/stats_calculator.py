@@ -125,7 +125,8 @@ class StatsCalculator:
             debug_info = []
             for col in debug_fields:
                 value = _get_field_value(req, col)
-                is_empty = not value or str(value).strip() == ''
+                # 修复：数字0不是空，None或空字符串才是空
+                is_empty = value is None or (isinstance(value, str) and value.strip() == '')
                 debug_info.append(f'{col}:{repr(value)[:20]}={is_empty}')
 
             print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:空白字段统计] 需求{idx} 测试员={tester}: {debug_info}')
@@ -133,7 +134,8 @@ class StatsCalculator:
             # 检查每个需要统计的列是否为空
             for col in EMPTY_FIELD_COLUMNS:
                 value = _get_field_value(req, col)
-                if not value or str(value).strip() == '':
+                # 修复：数字0不是空，None或空字符串才是空
+                if value is None or (isinstance(value, str) and value.strip() == ''):
                     tester_data[tester]['columns'][col] += 1
 
         # 计算合计列（只要有一个空字段的需求数）
@@ -151,7 +153,8 @@ class StatsCalculator:
             has_empty = False
             for col in EMPTY_FIELD_COLUMNS:
                 value = _get_field_value(req, col)
-                if not value or str(value).strip() == '':
+                # 修复：数字0不是空，None或空字符串才是空
+                if value is None or (isinstance(value, str) and value.strip() == ''):
                     has_empty = True
                     break
 
