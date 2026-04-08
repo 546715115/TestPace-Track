@@ -101,6 +101,10 @@ class StatsCalculator:
         # 调试日志：显示需要检查的列名和req中实际的列名
         print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:空白字段统计] 需要检查的列: {EMPTY_FIELD_COLUMNS}')
 
+        # 打印第一个需求的实际列名（用于调试）
+        if self.requirements:
+            print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:空白字段统计] 第一个需求的实际列名: {list(self.requirements[0].keys())}')
+
         for idx, req in enumerate(self.requirements):
             # 获取测试人员（取第一个）
             tester = req.get('测试人员', '')
