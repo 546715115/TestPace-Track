@@ -27,13 +27,13 @@ EMPTY_FIELD_COLUMNS = [
 
 
 def _get_field_value(req: Dict, field_name: str):
-    """从req中获取字段值，支持模糊匹配"""
+    """从req中获取字段值，支持模糊匹配（双向）"""
     # 先精确匹配
     if field_name in req:
         return req[field_name]
-    # 模糊匹配：req中的key包含field_name
+    # 模糊匹配：req中的key包含field_name，或者field_name包含key
     for key in req.keys():
-        if field_name in key:
+        if field_name in key or key in field_name:
             return req[key]
     return None
 
