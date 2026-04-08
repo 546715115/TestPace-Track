@@ -3,4 +3,4 @@ config/documents.json
 data/cache/*.xlsx
 data/*.db
 __pycache__/
-*.pyc
+*.pycvenv/
