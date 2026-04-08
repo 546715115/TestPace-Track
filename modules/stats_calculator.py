@@ -8,12 +8,13 @@ from modules.data_parser import normalize_progress, get_progress
 
 
 # 需要检查空白字段的列（排除业务团队、需求编号、需求描述、开发人员、测试人员）
+# 注意：有些列名在不同Excel文件中可能有细微差异，使用模糊匹配
 EMPTY_FIELD_COLUMNS = [
     '串讲和测试设计进度',
     '反串讲进度（%）',
     '用例数',
-    '计划转测时间',
-    '测试进度（%）',
+    '计划转测时间',          # 可能有后缀如"（格式:2024/01/01）"
+    '测试进度',              # 可能有"（%）"后缀
     '自验质量（自验pass，测试fail）',
     '问题单数量',
     '是否变更接口',
@@ -23,6 +24,18 @@ EMPTY_FIELD_COLUMNS = [
     '是否涉及可靠性',
     '涉及数据底座（MySQL/Cassandra/influxDB）',
 ]
+
+
+def _get_field_value(req: Dict, field_name: str):
+    """从req中获取字段值，支持模糊匹配"""
+    # 先精确匹配
+    if field_name in req:
+        return req[field_name]
+    # 模糊匹配：req中的key包含field_name
+    for key in req.keys():
+        if field_name in key:
+            return req[key]
+    return None
 
 
 class StatsCalculator:
@@ -111,7 +124,7 @@ class StatsCalculator:
             # 调试日志：显示每个需求在各列的值
             debug_info = []
             for col in EMPTY_FIELD_COLUMNS:
-                value = req.get(col)
+                value = _get_field_value(req, col)
                 is_empty = not value or str(value).strip() == ''
                 debug_info.append(f'{col}:{repr(value)[:20]}={is_empty}')
 
@@ -119,7 +132,7 @@ class StatsCalculator:
 
             # 检查每个需要统计的列是否为空
             for col in EMPTY_FIELD_COLUMNS:
-                value = req.get(col)
+                value = _get_field_value(req, col)
                 if not value or str(value).strip() == '':
                     tester_data[tester]['columns'][col] += 1
 
@@ -137,7 +150,7 @@ class StatsCalculator:
             # 检查该需求是否有任何空白字段
             has_empty = False
             for col in EMPTY_FIELD_COLUMNS:
-                value = req.get(col)
+                value = _get_field_value(req, col)
                 if not value or str(value).strip() == '':
                     has_empty = True
                     break
