@@ -95,15 +95,11 @@ class StatsCalculator:
         """按测试人员统计空白字段情况"""
         from datetime import datetime
 
+        # 只对这4个关键字段输出调试日志
+        debug_fields = ['串讲和测试设计进度', '反串讲进度', '计划转测时间', '测试进度']
+
         # 按测试人员聚合
         tester_data = {}
-
-        # 调试日志：显示需要检查的列名和req中实际的列名
-        print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:空白字段统计] 需要检查的列: {EMPTY_FIELD_COLUMNS}')
-
-        # 打印第一个需求的实际列名（用于调试）
-        if self.requirements:
-            print(f'[{datetime.now().strftime("%H:%M:%S")}] [模块:空白字段统计] 第一个需求的实际列名: {list(self.requirements[0].keys())}')
 
         for idx, req in enumerate(self.requirements):
             # 获取测试人员（取第一个）
@@ -125,9 +121,9 @@ class StatsCalculator:
 
             tester_data[tester]['requirement_count'] += 1
 
-            # 调试日志：显示每个需求在各列的值
+            # 只对4个关键字段输出调试日志
             debug_info = []
-            for col in EMPTY_FIELD_COLUMNS:
+            for col in debug_fields:
                 value = _get_field_value(req, col)
                 is_empty = not value or str(value).strip() == ''
                 debug_info.append(f'{col}:{repr(value)[:20]}={is_empty}')
