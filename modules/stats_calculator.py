@@ -58,6 +58,13 @@ class StatsCalculator:
         for req in self.requirements:
             progress = normalize_progress(get_progress(req))
 
+            # 空值（未填写）不计入完成/进行中/未开始统计
+            if progress is None:
+                bucket = self._get_progress_bucket(progress)
+                stats['test_progress_distribution'][bucket] = \
+                    stats['test_progress_distribution'].get(bucket, 0) + 1
+                continue
+
             if progress >= 100:
                 stats['completed_count'] += 1
             elif progress > 0:
@@ -167,8 +174,10 @@ class StatsCalculator:
 
         return result
 
-    def _get_progress_bucket(self, progress: int) -> str:
-        """获取进度桶"""
+    def _get_progress_bucket(self, progress) -> str:
+        """获取进度桶，空值返回'未填写'"""
+        if progress is None:
+            return '未填写'
         if progress >= 100:
             return '100%'
         elif progress >= 75:
