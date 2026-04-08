@@ -18,9 +18,8 @@ PROGRESS_FIELD_ALT = '测试进度'
 
 
 def get_progress(row: Dict) -> Any:
-    """获取进度值，兼容新旧列名，如果都为空则返回None"""
-    val = row.get(PROGRESS_FIELD) or row.get(PROGRESS_FIELD_ALT)
-    return val
+    """获取进度值，兼容新旧列名"""
+    return row.get(PROGRESS_FIELD) or row.get(PROGRESS_FIELD_ALT) or 0
 
 
 def fix_encoding(value):
@@ -183,12 +182,12 @@ def merge_value_field(values: list):
 
 
 def merge_progress_field(values: list):
-    """合并进度类字段：取最小值，如果全为空则返回None"""
+    """合并进度类字段：取最小值"""
     progress_values = []
     for v in values:
         if v is not None and str(v).strip():
             progress_values.append(normalize_progress(v))
-    return min(progress_values) if progress_values else None
+    return min(progress_values) if progress_values else 0
 
 
 class ExcelReader:
