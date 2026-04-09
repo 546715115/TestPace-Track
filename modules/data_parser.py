@@ -120,7 +120,11 @@ def parse_date(value) -> str:
 
 def normalize_progress(value):
     """标准化进度为整数百分比，空值返回None"""
-    if value is None or str(value).strip() == '':
+    # 独立检查 None，避免 Python 短路求值问题
+    # value is None 时返回 True，但我们的逻辑期望返回 None
+    if value is None:
+        return None
+    if str(value).strip() == '':
         return None
 
     val = str(value).strip()

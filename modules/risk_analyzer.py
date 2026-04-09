@@ -40,7 +40,7 @@ class RiskAnalyzer:
             plan = self.version_plans['需求反串讲完成']
             if self._is_overdue(plan['target_date'], current_date):
                 progress = normalize_progress(req.get('反串讲进度（%）', 0))
-                if progress < 100:
+                if progress is not None and progress < 100:
                     risks.append('reverse_serial_incomplete')
 
         # 3. 测试进度滞后
@@ -48,7 +48,7 @@ class RiskAnalyzer:
             plan = self.version_plans['需求测试完成']
             if self._is_overdue(plan['target_date'], current_date):
                 progress = normalize_progress(get_progress(req))
-                if progress < 100:
+                if progress is not None and progress < 100:
                     risks.append('test_progress_delayed')
 
         # 4. 空白字段检查

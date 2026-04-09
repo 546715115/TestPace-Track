@@ -58,11 +58,12 @@ class StatsCalculator:
         for req in self.requirements:
             progress = normalize_progress(get_progress(req))
 
-            # 空值（未填写）不计入完成/进行中/未开始统计
+            # 空值（未填写）计入未开始统计
             if progress is None:
                 bucket = self._get_progress_bucket(progress)
                 stats['test_progress_distribution'][bucket] = \
                     stats['test_progress_distribution'].get(bucket, 0) + 1
+                stats['not_started_count'] += 1
                 continue
 
             if progress >= 100:
