@@ -209,6 +209,66 @@ class TestRiskAnalyzer(unittest.TestCase):
         self.assertNotIn('serial_review_incomplete', risks, "在计划日期前不应该触发风险")
 
 
+class TestSerialReviewComplete(unittest.TestCase):
+    """测试串讲完成判断逻辑（_is_serial_review_complete）"""
+
+    def test_complete_standard(self):
+        """测试标准完成状态"""
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('已完成'))
+
+    def test_complete_with_version(self):
+        """测试包含版本号的完成状态"""
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('已串讲4.1'))
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('已串讲V2.0'))
+
+    def test_complete_with_note(self):
+        """测试包含备注的完成状态"""
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('已完成(4.2)'))
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('已完成(已评审)'))
+
+    def test_complete_design_finished(self):
+        """测试设计完成的多种表达"""
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('测试设计已完成'))
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('串讲和设计已完成'))
+
+    def test_complete_numeric(self):
+        """测试数字类型认为完成"""
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete(100))
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete(100.0))
+
+    def test_not_started(self):
+        """测试未开始状态"""
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete('未开始'))
+
+    def test_in_progress(self):
+        """测试进行中状态"""
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete('进行中'))
+
+    def test_not_complete(self):
+        """测试未完成状态"""
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete('未完成'))
+
+    def test_with_uncompleted(self):
+        """测试包含未字的完成状态"""
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete('未串讲'))
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete('尚未完成'))
+
+    def test_empty_values(self):
+        """测试空值"""
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete(None))
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete(''))
+
+    def test_whitespace(self):
+        """测试带空格的值"""
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('  已完成  '))
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete('  '))
+
+    def test_edge_cases(self):
+        """测试边界情况"""
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('完成'))  # 只有完成二字
+        self.assertTrue(RiskAnalyzer._is_serial_review_complete('完成了'))  # 动词形式
+
+
 class TestRiskLabelMapping(unittest.TestCase):
     """测试风险标签映射"""
 
