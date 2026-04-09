@@ -18,6 +18,33 @@ class RiskAnalyzer:
         """
         self.version_plans = {vp['stage_name']: vp for vp in version_plans}
 
+    @staticmethod
+    def _is_serial_review_complete(value: Any) -> bool:
+        """
+        判断串讲/设计是否完成
+        支持多种填写方式：
+        - '已完成'、'已完成(4.1)'、'测试设计已完成' 等 → 认为是完成
+        - '未开始'、'进行中'、'未完成' → 认为未完成
+        - None、空字符串 → 认为未完成
+        """
+        if value is None:
+            return False
+        if isinstance(value, (int, float)):
+            # 数字类型，默认完成（如填写了100%）
+            return True
+        val = str(value).strip()
+        if val == '':
+            return False
+        # 明确未完成的状态
+        incomplete_status = ['未开始', '进行中', '未完成']
+        if val in incomplete_status:
+            return False
+        # 包含"未"字且不是"已完成"的（如"未完成"、"未开始"）→ 未完成
+        if '未' in val and val != '已完成':
+            return False
+        # 其他情况（包含"完成"关键词的各种填写）→ 认为完成
+        return True
+
     def analyze_requirement(self, req: Dict, current_date: str = None) -> List[str]:
         """
         分析单条需求的风险
@@ -32,7 +59,7 @@ class RiskAnalyzer:
         if '需求串讲/设计完成' in self.version_plans:
             plan = self.version_plans['需求串讲/设计完成']
             if self._is_overdue(plan['target_date'], current_date):
-                if req.get('串讲和测试设计进度') != '已完成':
+                if not self._is_serial_review_complete(req.get('串讲和测试设计进度')):
                     risks.append('serial_review_incomplete')
 
         # 2. 反串讲未完成
