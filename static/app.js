@@ -490,9 +490,11 @@ function renderRiskCards() {
     const merged = mergedRequirements.length > 0 ? mergedRequirements : allRequirements.filter(r => r._is_first_in_group);
 
     const risks = {
-        not_started: merged.filter(r =>
-            r.risks && (r.risks.includes('serial_review_incomplete') || r.risks.includes('serial review incomplete'))
-        ),
+        // 未开始：进度为0或空（与后端stats_calculator一致）
+        not_started: merged.filter(r => {
+            const p = r['测试进度'];
+            return p === 0 || p === null || p === undefined || p === '';
+        }),
         reverse_delayed: merged.filter(r =>
             r.risks && (r.risks.includes('reverse_serial_incomplete') || r.risks.includes('reverse serial incomplete'))
         ),
@@ -546,7 +548,7 @@ function filterByRiskType(type, target) {
     }
 
     if (type === 'not-started') {
-        showRiskDetailModal('serial-review-incomplete', '需求串讲/设计未完成');
+        showRiskDetailModal('not-started', '未开始');
         return;
     } else if (type === 'reverse-delayed') {
         showRiskDetailModal('reverse-delayed', '反串讲完成进度滞后');
@@ -612,7 +614,7 @@ function showRiskDetailModal(type, title) {
         } else if (type === 'completed') {
             return progress >= 100;
         } else if (type === 'serial-review-incomplete') {
-            return r.risks && (r.risks.includes('serial_review_incomplete') || r.risks.includes('serial review incomplete') || r.risks.includes('reverse_serial_incomplete') || r.risks.includes('reverse serial incomplete'));
+            return r.risks && (r.risks.includes('serial_review_incomplete') || r.risks.includes('serial review incomplete'));
         } else if (type === 'reverse-delayed') {
             return r.risks && (r.risks.includes('reverse_serial_incomplete') || r.risks.includes('reverse serial incomplete'));
         } else if (type === 'test-delayed') {

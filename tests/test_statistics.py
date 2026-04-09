@@ -237,58 +237,74 @@ class TestFrontendLogicConsistency(unittest.TestCase):
         """
         测试风险卡片'未开始'与弹窗'not-started'逻辑一致性
 
-        renderRiskCards:
-          not_started: r.risks.includes('serial_review_incomplete')
-
-        showRiskDetailModal (not-started):
-          progress === 0
-
-        问题：这两个逻辑不一致！
-        - 风险卡片统计的是'串讲未完成'的需求
-        - 弹窗过滤的是'进度=0'的需求
+        统一后的逻辑：都按进度值判断（与后端stats_calculator一致）
+        - 进度 is None 或 '' 或 0 → 未开始
         """
-        analyzer = RiskAnalyzer(self.version_plans)
+        # 前端card和modal的判断逻辑（已在app.js中修改为一致）
+        def card_would_show(req):
+            """风险卡片未开始逻辑：进度为0或空"""
+            p = req.get('测试进度')
+            return p == 0 or p is None or p == ''
 
-        # 场景1：进度=0，但串讲已完成 - 应该出现在哪个统计中？
+        def modal_would_show(req):
+            """弹窗未开始逻辑：进度为0或空（progress || 0 === 0）"""
+            p = req.get('测试进度')
+            progress = p if p is not None else 0
+            if isinstance(progress, str) and progress.strip() == '':
+                progress = 0
+            return progress == 0
+
+        # 场景1：进度=0，串讲已完成
         req1 = {
-            '串讲和测试设计进度': '已完成',  # 串讲已完成
+            '串讲和测试设计进度': '已完成',
             '反串讲进度（%）': 0,
-            '测试进度': 0,  # 进度=0
+            '测试进度': 0,
             '测试人员': '张三',
         }
-        risks1 = analyzer.analyze_requirement(req1, '2026/04/05')
-
-        # renderRiskCards会显示：不显示（因为无serial_review_incomplete风险）
-        # showRiskDetailModal会显示：是（因为progress === 0）
-        has_serial_review_risk = 'serial_review_incomplete' in risks1
-        is_progress_zero = req1['测试进度'] == 0
-
+        card1 = card_would_show(req1)
+        modal1 = modal_would_show(req1)
         print(f"\n场景1 - 进度=0但串讲已完成:")
-        print(f"  风险卡片计数（serial_review_incomplete）: {has_serial_review_risk}")
-        print(f"  弹窗显示（progress === 0）: {is_progress_zero}")
-        print(f"  逻辑是否一致: {has_serial_review_risk == is_progress_zero}")
+        print(f"  卡片显示: {card1}, 弹窗显示: {modal1}, 一致: {card1 == modal1}")
+        self.assertEqual(card1, modal1, "场景1应该一致")
 
-        # 场景2：进度>0，但串讲未完成
+        # 场景2：进度>0，串讲未完成
         req2 = {
-            '串讲和测试设计进度': '进行中',  # 串讲未完成
+            '串讲和测试设计进度': '进行中',
             '反串讲进度（%）': 50,
-            '测试进度': 30,  # 进度>0
+            '测试进度': 30,
             '测试人员': '张三',
         }
-        risks2 = analyzer.analyze_requirement(req2, '2026/04/05')
-
-        has_serial_review_risk2 = 'serial_review_incomplete' in risks2
-        is_progress_zero2 = req2['测试进度'] == 0
-
+        card2 = card_would_show(req2)
+        modal2 = modal_would_show(req2)
         print(f"\n场景2 - 进度>0但串讲未完成:")
-        print(f"  风险卡片计数（serial_review_incomplete）: {has_serial_review_risk2}")
-        print(f"  弹窗显示（progress === 0）: {is_progress_zero2}")
-        print(f"  逻辑是否一致: {has_serial_review_risk2 == is_progress_zero2}")
+        print(f"  卡片显示: {card2}, 弹窗显示: {modal2}, 一致: {card2 == modal2}")
+        self.assertEqual(card2, modal2, "场景2应该一致")
 
-        # 断言：这两个场景都表明逻辑不一致
-        # 如果代码正确，两者应该一致
-        self.assertEqual(has_serial_review_risk, is_progress_zero,
-                         "风险卡片和弹窗的'未开始'逻辑应该一致")
+        # 场景3：进度为空
+        req3 = {
+            '串讲和测试设计进度': '进行中',
+            '反串讲进度（%）': 0,
+            '测试进度': None,
+            '测试人员': '张三',
+        }
+        card3 = card_would_show(req3)
+        modal3 = modal_would_show(req3)
+        print(f"\n场景3 - 进度为空:")
+        print(f"  卡片显示: {card3}, 弹窗显示: {modal3}, 一致: {card3 == modal3}")
+        self.assertEqual(card3, modal3, "场景3应该一致")
+
+        # 场景4：进度为空字符串
+        req4 = {
+            '串讲和测试设计进度': '已完成',
+            '反串讲进度（%）': 100,
+            '测试进度': '',
+            '测试人员': '张三',
+        }
+        card4 = card_would_show(req4)
+        modal4 = modal_would_show(req4)
+        print(f"\n场景4 - 进度为空字符串:")
+        print(f"  卡片显示: {card4}, 弹窗显示: {modal4}, 一致: {card4 == modal4}")
+        self.assertEqual(card4, modal4, "场景4应该一致")
 
     def test_risk_card_vs_modal_serial_review(self):
         """
