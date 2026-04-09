@@ -232,7 +232,9 @@ class TestSerialReviewComplete(unittest.TestCase):
         self.assertTrue(RiskAnalyzer._is_serial_review_complete('串讲和设计已完成'))
 
     def test_complete_numeric(self):
-        """测试数字类型认为完成"""
+        """测试数字类型：0未完成，100完成"""
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete(0))
+        self.assertFalse(RiskAnalyzer._is_serial_review_complete(50))
         self.assertTrue(RiskAnalyzer._is_serial_review_complete(100))
         self.assertTrue(RiskAnalyzer._is_serial_review_complete(100.0))
 

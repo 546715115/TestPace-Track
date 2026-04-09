@@ -25,13 +25,14 @@ class RiskAnalyzer:
         支持多种填写方式：
         - '已完成'、'已完成(4.1)'、'测试设计已完成' 等 → 认为是完成
         - '未开始'、'进行中'、'未完成' → 认为未完成
+        - 数字：0 → 未完成，100 → 完成
         - None、空字符串 → 认为未完成
         """
         if value is None:
             return False
         if isinstance(value, (int, float)):
-            # 数字类型，默认完成（如填写了100%）
-            return True
+            # 数字类型：0表示未开始，100表示完成
+            return value >= 100
         val = str(value).strip()
         if val == '':
             return False
